@@ -34,14 +34,15 @@ create table task_folders (
   created_at  timestamptz not null default now()
 );
 
--- Bijlagen (attachments) — all link-based (Google Drive, OneDrive, YouTube, etc.)
+-- Attachments (uploaded files + links)
 create table attachments (
-  id          uuid primary key default gen_random_uuid(),
-  folder_id   uuid not null references task_folders(id) on delete cascade,
-  type        text not null check (type in ('image', 'pdf', 'youtube', 'link')),
-  title       text,
-  url         text,
-  created_at  timestamptz not null default now()
+  id            uuid primary key default gen_random_uuid(),
+  folder_id     uuid not null references task_folders(id) on delete cascade,
+  type          text not null check (type in ('image', 'pdf', 'youtube', 'link')),
+  title         text,
+  url           text,
+  storage_path  text,
+  created_at    timestamptz not null default now()
 );
 
 -- Pomodoro sessies

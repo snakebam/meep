@@ -34,6 +34,7 @@ export interface Attachment {
   type: 'image' | 'pdf' | 'youtube' | 'link'
   title: string | null
   url: string | null
+  storage_path: string | null
   created_at: string
 }
 

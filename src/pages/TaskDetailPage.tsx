@@ -30,6 +30,7 @@ export function TaskDetailPage() {
     addFolder,
     deleteFolder,
     addAttachment,
+    uploadFile,
     deleteAttachment,
   } = useAttachments(id!)
 
@@ -164,6 +165,7 @@ export function TaskDetailPage() {
               folder={folder}
               attachments={attachments.get(folder.id) ?? []}
               onAddAttachment={addAttachment}
+              onUploadFile={uploadFile}
               onDeleteAttachment={deleteAttachment}
               onDeleteFolder={folder.is_default ? undefined : () => deleteFolder(folder.id)}
             />

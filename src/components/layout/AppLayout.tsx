@@ -2,6 +2,8 @@ import { Outlet } from 'react-router-dom'
 import { TopStatsBar } from './TopStatsBar'
 import { SubjectSidebar } from './SubjectSidebar'
 import { PomodoroTimer } from '../timer/PomodoroTimer'
+import { Heatmap } from '../charts/Heatmap'
+import { GrowthChart } from '../charts/GrowthChart'
 import { usePomodoro } from '../../hooks/usePomodoro'
 import { useSubjects } from '../../hooks/useSubjects'
 import { useStats } from '../../hooks/useStats'
@@ -16,8 +18,8 @@ export function AppLayout() {
       <TopStatsBar streak={stats.streak} pomosToday={stats.pomosToday} />
 
       <div className="flex flex-1">
-        {/* Left: Timer */}
-        <div className="w-56 border-r border-border bg-surface p-4 flex flex-col items-center pt-6">
+        {/* Left: Timer + Heatmap + Growth */}
+        <div className="w-64 border-r border-border bg-surface p-4 flex flex-col items-center pt-6 gap-6 overflow-auto">
           <PomodoroTimer
             remaining={pomodoro.remaining}
             timerState={pomodoro.timerState}
@@ -25,12 +27,17 @@ export function AppLayout() {
             subjectId={pomodoro.subjectId}
             subjects={subjects}
             onSubjectChange={pomodoro.setSubjectId}
-            onStart={() => {
-              pomodoro.start()
-              // Refresh stats after a pomo completes (handled in timer)
-            }}
+            onStart={pomodoro.start}
             onStop={pomodoro.stop}
           />
+
+          <div className="w-full border-t border-border pt-4">
+            <Heatmap data={stats.heatmapData} />
+          </div>
+
+          <div className="w-full border-t border-border pt-4">
+            <GrowthChart data={stats.weeklyData} />
+          </div>
         </div>
 
         {/* Center: Main content */}

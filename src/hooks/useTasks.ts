@@ -7,11 +7,12 @@ export function useTasks() {
   const [loading, setLoading] = useState(true)
 
   const fetch = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .select('*, subject:subjects(*)')
       .order('is_done', { ascending: true })
       .order('sort_order', { ascending: true })
+    if (error) console.error('Failed to fetch tasks:', error.message)
     if (data) setTasks(data)
     setLoading(false)
   }, [])
@@ -25,11 +26,17 @@ export function useTasks() {
     note?: string | null
   }) => {
     const maxOrder = tasks.reduce((max, t) => Math.max(max, t.sort_order), 0)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .insert({ ...task, sort_order: maxOrder + 1 })
       .select('*, subject:subjects(*)')
       .single()
+
+    if (error) {
+      console.error('Failed to create task:', error.message)
+      alert('Failed to create task: ' + error.message)
+      return null
+    }
 
     if (data) {
       // Auto-create default folders

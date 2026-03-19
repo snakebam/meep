@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Folder, Trash2, Link, Youtube, FileText, Image, X, Plus } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Folder, Trash2, Link, Youtube, FileText, Image, X, Upload } from 'lucide-react'
 import { PdfViewer } from './PdfViewer'
 import { YoutubeEmbed } from './YoutubeEmbed'
 import { LinkCard } from './LinkCard'
@@ -10,6 +10,7 @@ interface FolderColumnProps {
   folder: TaskFolder
   attachments: Attachment[]
   onAddAttachment: (folderId: string, url: string, title: string, type: DetectedLinkType) => Promise<unknown>
+  onUploadFile: (folderId: string, file: File) => Promise<unknown>
   onDeleteAttachment: (attachment: Attachment) => Promise<void>
   onDeleteFolder?: () => Promise<void>
 }
@@ -18,14 +19,17 @@ export function FolderColumn({
   folder,
   attachments,
   onAddAttachment,
+  onUploadFile,
   onDeleteAttachment,
   onDeleteFolder,
 }: FolderColumnProps) {
-  const [showAdd, setShowAdd] = useState(false)
+  const [showAddLink, setShowAddLink] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
   const [linkType, setLinkType] = useState<DetectedLinkType>('link')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleUrlChange = (url: string) => {
     setLinkUrl(url)
@@ -34,12 +38,58 @@ export function FolderColumn({
     }
   }
 
-  const handleAdd = async () => {
+  const handleAddLink = async () => {
     if (!linkUrl.trim()) return
     await onAddAttachment(folder.id, linkUrl.trim(), linkTitle.trim() || linkUrl.trim(), linkType)
     setLinkUrl('')
     setLinkTitle('')
-    setShowAdd(false)
+    setShowAddLink(false)
+  }
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        await onUploadFile(folder.id, file)
+      }
+    } catch (err) {
+      console.error('Upload failed:', err)
+    }
+    setUploading(false)
+  }
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          setUploading(true)
+          try {
+            // Give pasted images a name with timestamp
+            const ext = file.type.split('/')[1] || 'png'
+            const namedFile = new File([file], `pasted-image-${Date.now()}.${ext}`, { type: file.type })
+            await onUploadFile(folder.id, namedFile)
+          } catch (err) {
+            console.error('Paste upload failed:', err)
+          }
+          setUploading(false)
+        }
+      }
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    await handleFileUpload(e.dataTransfer.files)
+  }
+
+  const getAccept = () => {
+    if (folder.name === 'PDFs') return '.pdf'
+    if (folder.name === 'Images') return 'image/*'
+    return '.pdf,image/*'
   }
 
   const typeOptions: { value: DetectedLinkType; icon: React.ReactNode; label: string }[] = [
@@ -50,17 +100,32 @@ export function FolderColumn({
   ]
 
   return (
-    <div className="flex-1 min-w-[200px] max-w-[300px] bg-surface-secondary rounded-xl p-3 flex flex-col gap-2">
+    <div
+      className="flex-1 min-w-[220px] max-w-[320px] bg-surface-secondary rounded-xl p-3 flex flex-col gap-2"
+      onPaste={handlePaste}
+      onDragOver={e => e.preventDefault()}
+      onDrop={handleDrop}
+      tabIndex={0}
+    >
       <div className="flex items-center gap-2 mb-1">
         <Folder className="w-4 h-4 text-text-muted" />
         <h4 className="text-sm font-medium text-text-primary flex-1">{folder.name}</h4>
         <div className="flex items-center gap-1">
+          {/* Upload file button */}
           <button
-            onClick={() => setShowAdd(true)}
+            onClick={() => fileInputRef.current?.click()}
             className="text-text-muted hover:text-primary-500 transition-colors"
-            title="Add"
+            title="Upload file"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Upload className="w-3.5 h-3.5" />
+          </button>
+          {/* Add link button */}
+          <button
+            onClick={() => setShowAddLink(true)}
+            className="text-text-muted hover:text-primary-500 transition-colors"
+            title="Add link"
+          >
+            <Link className="w-3.5 h-3.5" />
           </button>
           {!folder.is_default && onDeleteFolder && (
             <button
@@ -74,8 +139,33 @@ export function FolderColumn({
         </div>
       </div>
 
-      {/* Add content form */}
-      {showAdd && (
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={getAccept()}
+        multiple
+        className="hidden"
+        onChange={e => handleFileUpload(e.target.files)}
+      />
+
+      {/* Upload drop zone */}
+      {uploading && (
+        <div className="flex items-center justify-center p-2 rounded-lg border border-primary-300 bg-primary-50">
+          <span className="text-xs text-primary-600 animate-pulse">Uploading...</span>
+        </div>
+      )}
+
+      {/* Drag & paste hint */}
+      {attachments.length === 0 && !showAddLink && (
+        <div className="flex flex-col items-center gap-1 p-3 rounded-lg border-2 border-dashed border-border text-text-muted">
+          <Upload className="w-4 h-4" />
+          <span className="text-[10px] text-center">Drop files, paste images, or click upload</span>
+        </div>
+      )}
+
+      {/* Add link form */}
+      {showAddLink && (
         <div className="flex flex-col gap-1.5 p-2 bg-surface rounded-lg border border-border">
           <p className="text-[10px] text-text-muted">Paste a link (Google Drive, OneDrive, YouTube, or other URL)</p>
           <input
@@ -89,7 +179,7 @@ export function FolderColumn({
             value={linkTitle}
             onChange={e => setLinkTitle(e.target.value)}
             placeholder="Title (optional)"
-            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            onKeyDown={e => e.key === 'Enter' && handleAddLink()}
             className="text-xs px-2 py-1 rounded border border-border outline-none focus:border-primary-400"
           />
           <div className="flex gap-1 flex-wrap">
@@ -107,10 +197,10 @@ export function FolderColumn({
             ))}
           </div>
           <div className="flex gap-1">
-            <button onClick={handleAdd} className="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors">
+            <button onClick={handleAddLink} className="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors">
               Add
             </button>
-            <button onClick={() => { setShowAdd(false); setLinkUrl(''); setLinkTitle('') }} className="text-xs px-2 py-1 text-text-muted">
+            <button onClick={() => { setShowAddLink(false); setLinkUrl(''); setLinkTitle('') }} className="text-xs px-2 py-1 text-text-muted">
               Cancel
             </button>
           </div>
@@ -128,7 +218,7 @@ export function FolderColumn({
             {attachment.type === 'image' && attachment.url && (
               <div>
                 <img
-                  src={toDriveImageUrl(attachment.url)}
+                  src={attachment.storage_path ? attachment.url : toDriveImageUrl(attachment.url)}
                   alt={attachment.title ?? ''}
                   className="rounded-lg border border-border w-full object-cover max-h-40 cursor-pointer"
                   onClick={() => setExpanded(expanded === attachment.id ? null : attachment.id)}
@@ -139,7 +229,7 @@ export function FolderColumn({
                     onClick={() => setExpanded(null)}
                   >
                     <img
-                      src={toDriveImageUrl(attachment.url)}
+                      src={attachment.storage_path ? attachment.url : toDriveImageUrl(attachment.url)}
                       alt={attachment.title ?? ''}
                       className="max-w-[90vw] max-h-[90vh] rounded-lg"
                     />
@@ -159,7 +249,10 @@ export function FolderColumn({
                 </button>
                 {expanded === attachment.id && (
                   <div className="mt-1">
-                    <PdfViewer url={toEmbedUrl(attachment.url)} title={attachment.title ?? undefined} />
+                    <PdfViewer
+                      url={attachment.storage_path ? attachment.url : toEmbedUrl(attachment.url)}
+                      title={attachment.title ?? undefined}
+                    />
                   </div>
                 )}
               </div>

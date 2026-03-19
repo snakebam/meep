@@ -53,6 +53,13 @@ export function useAttachments(taskId: string) {
   }
 
   const deleteFolder = async (folderId: string) => {
+    // Delete uploaded files from storage
+    const folderAttachments = attachments.get(folderId) ?? []
+    for (const a of folderAttachments) {
+      if (a.storage_path) {
+        await supabase.storage.from('attachments').remove([a.storage_path])
+      }
+    }
     await supabase.from('task_folders').delete().eq('id', folderId)
     setFolders(prev => prev.filter(f => f.id !== folderId))
     setAttachments(prev => {
@@ -62,6 +69,7 @@ export function useAttachments(taskId: string) {
     })
   }
 
+  /** Add a link-based attachment (YouTube, external link, Google Drive link) */
   const addAttachment = async (
     folderId: string,
     url: string,
@@ -85,7 +93,53 @@ export function useAttachments(taskId: string) {
     return data
   }
 
+  /** Upload a file (PDF or image) to Supabase Storage */
+  const uploadFile = async (folderId: string, file: File) => {
+    const path = `${taskId}/${folderId}/${Date.now()}_${file.name}`
+    const { error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(path, file)
+
+    if (uploadError) {
+      console.error('Upload failed:', uploadError.message)
+      alert('Upload failed: ' + uploadError.message)
+      throw uploadError
+    }
+
+    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+
+    const type = file.type === 'application/pdf' ? 'pdf' as const
+      : file.type.startsWith('image/') ? 'image' as const
+      : 'link' as const
+
+    const { data } = await supabase
+      .from('attachments')
+      .insert({
+        folder_id: folderId,
+        type,
+        title: file.name,
+        url: urlData.publicUrl,
+        storage_path: path,
+      })
+      .select()
+      .single()
+
+    if (data) {
+      setAttachments(prev => {
+        const next = new Map(prev)
+        const list = next.get(folderId) ?? []
+        next.set(folderId, [data, ...list])
+        return next
+      })
+    }
+    return data
+  }
+
   const deleteAttachment = async (attachment: Attachment) => {
+    // Delete from storage if it was an uploaded file
+    if (attachment.storage_path) {
+      await supabase.storage.from('attachments').remove([attachment.storage_path])
+    }
     await supabase.from('attachments').delete().eq('id', attachment.id)
     setAttachments(prev => {
       const next = new Map(prev)
@@ -102,6 +156,7 @@ export function useAttachments(taskId: string) {
     addFolder,
     deleteFolder,
     addAttachment,
+    uploadFile,
     deleteAttachment,
     refetch: fetch,
   }
