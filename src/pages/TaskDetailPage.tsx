@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 import { formatDueDate } from '../lib/utils'
 import { useAttachments } from '../hooks/useAttachments'
 import { FolderColumn } from '../components/attachments/FolderColumn'
-import { PdfViewer } from '../components/attachments/PdfViewer'
 import type { Task, Subject } from '../types'
 
 interface OutletContext {

@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import { Folder, Trash2, Link, Youtube, FileText, Image, X, Upload } from 'lucide-react'
-import { PdfViewer } from './PdfViewer'
 import { YoutubeEmbed } from './YoutubeEmbed'
 import { LinkCard } from './LinkCard'
 import { detectLinkType, toEmbedUrl, toDriveImageUrl } from '../../lib/utils'
@@ -243,7 +242,8 @@ export function FolderColumn({
             {attachment.type === 'pdf' && attachment.url && (
               <button
                 onClick={() => {
-                  const pdfUrl = attachment.storage_path ? attachment.url : toEmbedUrl(attachment.url)
+                  const url = attachment.url!
+                  const pdfUrl = attachment.storage_path ? url : toEmbedUrl(url)
                   if (onOpenPdf) {
                     onOpenPdf(pdfUrl, attachment.title ?? 'PDF')
                   } else {
