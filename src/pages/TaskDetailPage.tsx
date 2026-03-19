@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
-import { ArrowLeft, Calendar, Tag, Plus, Save } from 'lucide-react'
+import { ArrowLeft, Calendar, Tag, Save, Plus, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatDueDate } from '../lib/utils'
 import { useAttachments } from '../hooks/useAttachments'
 import { FolderColumn } from '../components/attachments/FolderColumn'
+import { PdfViewer } from '../components/attachments/PdfViewer'
 import type { Task, Subject } from '../types'
 
 interface OutletContext {
@@ -23,6 +24,7 @@ export function TaskDetailPage() {
   const [saving, setSaving] = useState(false)
   const [addingFolder, setAddingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [activePdf, setActivePdf] = useState<{ url: string; title: string } | null>(null)
 
   const {
     folders,
@@ -145,10 +147,10 @@ export function TaskDetailPage() {
         </button>
       </div>
 
-      {/* Content: Note + Folders */}
+      {/* Content: Note + Folders (or Note + PDF when viewing) */}
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Left: Note */}
-        <div className="flex-1 min-w-0">
+        <div className={activePdf ? 'w-1/2 min-w-0' : 'flex-1 min-w-0'}>
           <textarea
             value={note}
             onChange={e => setNote(e.target.value)}
@@ -157,52 +159,75 @@ export function TaskDetailPage() {
           />
         </div>
 
-        {/* Right: Attachment folders */}
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {folders.map(folder => (
-            <FolderColumn
-              key={folder.id}
-              folder={folder}
-              attachments={attachments.get(folder.id) ?? []}
-              onAddAttachment={addAttachment}
-              onUploadFile={uploadFile}
-              onDeleteAttachment={deleteAttachment}
-              onDeleteFolder={folder.is_default ? undefined : () => deleteFolder(folder.id)}
-            />
-          ))}
-
-          {/* Add folder button */}
-          <div className="min-w-[120px] flex flex-col items-center justify-center">
-            {addingFolder ? (
-              <div className="flex flex-col gap-1.5">
-                <input
-                  value={newFolderName}
-                  onChange={e => setNewFolderName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddFolder()}
-                  placeholder="Folder name..."
-                  autoFocus
-                  className="text-xs px-2 py-1 rounded border border-border outline-none focus:border-primary-400 w-24"
-                />
-                <div className="flex gap-1">
-                  <button onClick={handleAddFolder} className="text-xs px-2 py-0.5 bg-primary-600 text-white rounded">
-                    OK
-                  </button>
-                  <button onClick={() => setAddingFolder(false)} className="text-xs px-2 py-0.5 text-text-muted">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
+        {/* Right: PDF viewer (50/50 split) or Folders */}
+        {activePdf ? (
+          <div className="w-1/2 min-w-0 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-text-primary truncate">{activePdf.title}</span>
               <button
-                onClick={() => setAddingFolder(true)}
-                className="flex flex-col items-center gap-1 text-text-muted hover:text-primary-500 transition-colors"
+                onClick={() => setActivePdf(null)}
+                className="p-1 rounded-lg hover:bg-surface-tertiary transition-colors text-text-muted"
               >
-                <Plus className="w-5 h-5" />
-                <span className="text-xs">Add folder</span>
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
+            <div className="flex-1 min-h-0 rounded-xl border border-border overflow-hidden bg-surface">
+              <iframe
+                src={activePdf.url}
+                title={activePdf.title}
+                className="w-full h-full border-0"
+                style={{ minHeight: '500px' }}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {folders.map(folder => (
+              <FolderColumn
+                key={folder.id}
+                folder={folder}
+                attachments={attachments.get(folder.id) ?? []}
+                onAddAttachment={addAttachment}
+                onUploadFile={uploadFile}
+                onDeleteAttachment={deleteAttachment}
+                onDeleteFolder={folder.is_default ? undefined : () => deleteFolder(folder.id)}
+                onOpenPdf={(url, pdfTitle) => setActivePdf({ url, title: pdfTitle })}
+              />
+            ))}
+
+            {/* Add folder button */}
+            <div className="min-w-[120px] flex flex-col items-center justify-center">
+              {addingFolder ? (
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    value={newFolderName}
+                    onChange={e => setNewFolderName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddFolder()}
+                    placeholder="Folder name..."
+                    autoFocus
+                    className="text-xs px-2 py-1 rounded border border-border outline-none focus:border-primary-400 w-24"
+                  />
+                  <div className="flex gap-1">
+                    <button onClick={handleAddFolder} className="text-xs px-2 py-0.5 bg-primary-600 text-white rounded">
+                      OK
+                    </button>
+                    <button onClick={() => setAddingFolder(false)} className="text-xs px-2 py-0.5 text-text-muted">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingFolder(true)}
+                  className="flex flex-col items-center gap-1 text-text-muted hover:text-primary-500 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-xs">Add folder</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

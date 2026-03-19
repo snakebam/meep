@@ -39,12 +39,6 @@ export function useTasks() {
     }
 
     if (data) {
-      // Auto-create default folders
-      await supabase.from('task_folders').insert([
-        { task_id: data.id, name: 'Notes', is_default: true, sort_order: 0 },
-        { task_id: data.id, name: 'PDFs', is_default: true, sort_order: 1 },
-        { task_id: data.id, name: 'Images', is_default: true, sort_order: 2 },
-      ])
       setTasks(prev => [...prev, data])
     }
     return data

@@ -13,15 +13,10 @@ function getColor(count: number): string {
 }
 
 export function Heatmap({ data }: HeatmapProps) {
-  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-  // Organize data into a grid: 7 rows (days) × N columns (weeks)
-  // We need to figure out which day-of-week each data point falls on
   const cells: { day: string; count: number; dayOfWeek: number; weekIndex: number }[] = []
 
   if (data.length > 0) {
     const firstDate = new Date(data[0].day + 'T00:00:00')
-    // JS getDay(): 0=Sun, we want 0=Mon
     const toDow = (d: Date) => (d.getDay() + 6) % 7
 
     let weekIndex = 0
@@ -37,26 +32,33 @@ export function Heatmap({ data }: HeatmapProps) {
   }
 
   const numWeeks = cells.length > 0 ? cells[cells.length - 1].weekIndex + 1 : 5
+  const shortLabels = ['M', '', 'W', '', 'F', '', 'S']
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Month</h3>
-      <div className="flex gap-1">
-        <div className="flex flex-col gap-1 mr-1">
-          {dayLabels.map(label => (
-            <div key={label} className="w-4 h-4 flex items-center justify-end">
-              <span className="text-[10px] text-text-muted">{label}</span>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide">Activity</h3>
+      </div>
+
+      <div className="flex gap-[3px]">
+        {/* Day labels */}
+        <div className="flex flex-col gap-[3px] shrink-0 mr-0.5">
+          {shortLabels.map((label, i) => (
+            <div key={i} className="h-[14px] flex items-center justify-end">
+              <span className="text-[9px] text-text-muted leading-none">{label}</span>
             </div>
           ))}
         </div>
+
+        {/* Week columns - stretch to fill sidebar width */}
         {Array.from({ length: numWeeks }, (_, weekIdx) => (
-          <div key={weekIdx} className="flex flex-col gap-1">
+          <div key={weekIdx} className="flex flex-col gap-[3px] flex-1 min-w-0">
             {Array.from({ length: 7 }, (_, dayIdx) => {
               const cell = cells.find(c => c.weekIndex === weekIdx && c.dayOfWeek === dayIdx)
               return (
                 <div
                   key={dayIdx}
-                  className="w-4 h-4 rounded-sm transition-colors"
+                  className="h-[14px] rounded-[3px] transition-colors"
                   style={{ backgroundColor: getColor(cell?.count ?? 0) }}
                   title={cell ? `${cell.day}: ${cell.count} pomodoros` : ''}
                 />
@@ -65,16 +67,17 @@ export function Heatmap({ data }: HeatmapProps) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-1.5 mt-2">
-        <span className="text-[10px] text-text-muted">Less</span>
+
+      <div className="flex items-center gap-1 mt-2 justify-end">
+        <span className="text-[9px] text-text-muted">Less</span>
         {[0, 1, 2, 4, 6].map(n => (
           <div
             key={n}
-            className="w-3 h-3 rounded-sm"
+            className="w-[10px] h-[10px] rounded-[2px]"
             style={{ backgroundColor: getColor(n) }}
           />
         ))}
-        <span className="text-[10px] text-text-muted">More</span>
+        <span className="text-[9px] text-text-muted">More</span>
       </div>
     </div>
   )

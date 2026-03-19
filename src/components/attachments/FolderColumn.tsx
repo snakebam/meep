@@ -13,6 +13,7 @@ interface FolderColumnProps {
   onUploadFile: (folderId: string, file: File) => Promise<unknown>
   onDeleteAttachment: (attachment: Attachment) => Promise<void>
   onDeleteFolder?: () => Promise<void>
+  onOpenPdf?: (url: string, title: string) => void
 }
 
 export function FolderColumn({
@@ -22,6 +23,7 @@ export function FolderColumn({
   onUploadFile,
   onDeleteAttachment,
   onDeleteFolder,
+  onOpenPdf,
 }: FolderColumnProps) {
   const [showAddLink, setShowAddLink] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
@@ -239,23 +241,20 @@ export function FolderColumn({
             )}
 
             {attachment.type === 'pdf' && attachment.url && (
-              <div>
-                <button
-                  onClick={() => setExpanded(expanded === attachment.id ? null : attachment.id)}
-                  className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-lg border border-border hover:border-primary-200 text-left transition-colors"
-                >
-                  <FileText className="w-3.5 h-3.5 text-danger shrink-0" />
-                  <span className="text-xs text-text-primary truncate">{attachment.title}</span>
-                </button>
-                {expanded === attachment.id && (
-                  <div className="mt-1">
-                    <PdfViewer
-                      url={attachment.storage_path ? attachment.url : toEmbedUrl(attachment.url)}
-                      title={attachment.title ?? undefined}
-                    />
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => {
+                  const pdfUrl = attachment.storage_path ? attachment.url : toEmbedUrl(attachment.url)
+                  if (onOpenPdf) {
+                    onOpenPdf(pdfUrl, attachment.title ?? 'PDF')
+                  } else {
+                    setExpanded(expanded === attachment.id ? null : attachment.id)
+                  }
+                }}
+                className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-lg border border-border hover:border-primary-200 text-left transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5 text-danger shrink-0" />
+                <span className="text-xs text-text-primary truncate">{attachment.title}</span>
+              </button>
             )}
 
             {attachment.type === 'link' && attachment.url && (
