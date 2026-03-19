@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(cp -r /c/Users/jacob/Desktop/meep-temp/* /c/Users/jacob/Desktop/meep/)",
+      "Bash(cp /c/Users/jacob/Desktop/meep-temp/.gitignore /c/Users/jacob/Desktop/meep/)",
+      "Bash(rm -rf /c/Users/jacob/Desktop/meep-temp)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where node:*)",
+      "Bash(where npx:*)",
+      "Bash(where npm:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
