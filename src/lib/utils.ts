@@ -157,11 +157,30 @@ export function isCloudStorageUrl(url: string): boolean {
 }
 
 const SUBJECT_COLORS = [
-  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1',
+  '#2B2D5E', '#326B50', '#D4A934', '#E08B3A', '#CD5050',
+  '#4a4d8a', '#458a6a', '#b8912a', '#c47030', '#a83e3e',
 ]
 
 export function getNextColor(usedColors: string[]): string {
   const available = SUBJECT_COLORS.filter(c => !usedColors.includes(c))
   return available[0] ?? SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)]
+}
+
+/** Map old bright colors to new palette colors */
+const OLD_TO_NEW_COLOR: Record<string, string> = {
+  '#3b82f6': '#2B2D5E',
+  '#ef4444': '#CD5050',
+  '#22c55e': '#326B50',
+  '#f59e0b': '#D4A934',
+  '#8b5cf6': '#4a4d8a',
+  '#ec4899': '#a83e3e',
+  '#06b6d4': '#458a6a',
+  '#f97316': '#E08B3A',
+  '#14b8a6': '#326B50',
+  '#6366f1': '#2B2D5E',
+}
+
+export function migrateColor(color: string): string | null {
+  const newColor = OLD_TO_NEW_COLOR[color.toLowerCase()]
+  return newColor && newColor.toLowerCase() !== color.toLowerCase() ? newColor : null
 }

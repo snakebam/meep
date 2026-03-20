@@ -23,19 +23,19 @@ function Countdown({ dueDate }: { dueDate: string }) {
 
   if (diffDays < 0) {
     label = `${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''} overdue`
-    colorClass = 'bg-red-100 text-red-700 border-red-200'
+    colorClass = 'bg-danger/20 text-danger border-danger/30'
   } else if (diffDays === 0) {
     label = 'Due today!'
-    colorClass = 'bg-red-100 text-red-700 border-red-200'
+    colorClass = 'bg-danger/20 text-danger border-danger/30'
   } else if (diffDays === 1) {
     label = 'Due tomorrow'
-    colorClass = 'bg-orange-100 text-orange-700 border-orange-200'
+    colorClass = 'bg-warning/20 text-warning border-warning/30'
   } else if (diffDays <= 3) {
     label = `${diffDays} days left`
-    colorClass = 'bg-orange-100 text-orange-700 border-orange-200'
+    colorClass = 'bg-warning/20 text-warning border-warning/30'
   } else if (diffDays <= 7) {
     label = `${diffDays} days left`
-    colorClass = 'bg-yellow-100 text-yellow-700 border-yellow-200'
+    colorClass = 'bg-primary-500/20 text-primary-500 border-primary-500/30'
   } else {
     const weeks = Math.floor(diffDays / 7)
     const remainDays = diffDays % 7
@@ -217,7 +217,7 @@ export function AssignmentPage() {
 
         <button
           onClick={handleDelete}
-          className="p-1.5 rounded-lg hover:bg-red-50 text-text-muted hover:text-danger transition-colors"
+          className="p-1.5 rounded-lg hover:bg-danger/10 text-text-muted hover:text-danger transition-colors"
           title="Delete assignment"
         >
           <Trash2 className="w-4 h-4" />
@@ -303,7 +303,7 @@ export function AssignmentPage() {
                 <button
                   key={task.id}
                   onClick={() => linkTask(task.id)}
-                  className="flex items-center gap-2 px-2 py-1 rounded text-left hover:bg-primary-50 transition-colors"
+                  className="flex items-center gap-2 px-2 py-1 rounded text-left hover:bg-primary-50/10 transition-colors"
                 >
                   <Plus className="w-2.5 h-2.5 text-primary-500" />
                   <span className="text-xs text-text-primary">{task.title}</span>

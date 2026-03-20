@@ -1,35 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  --color-primary-50: #2a2640;
+  --color-primary-100: #3d3555;
+  --color-primary-200: #5c4f2e;
+  --color-primary-300: #b8912a;
+  --color-primary-400: #c9a030;
+  --color-primary-500: #D4A934;
+  --color-primary-600: #c09a2e;
+  --color-primary-700: #a88528;
+  --color-primary-800: #8a6d20;
+  --color-primary-900: #6b5418;
 
-  --color-accent-50: #f0fdf4;
-  --color-accent-100: #dcfce7;
-  --color-accent-200: #bbf7d0;
-  --color-accent-300: #86efac;
-  --color-accent-400: #4ade80;
-  --color-accent-500: #22c55e;
-  --color-accent-600: #16a34a;
-  --color-accent-700: #15803d;
+  --color-accent-50: #1a2a22;
+  --color-accent-100: #1e3328;
+  --color-accent-200: #244030;
+  --color-accent-300: #2d5440;
+  --color-accent-400: #326B50;
+  --color-accent-500: #3a7d5e;
+  --color-accent-600: #326B50;
+  --color-accent-700: #2a5a43;
 
-  --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
-  --color-surface-tertiary: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94a3b8;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
+  --color-surface: #1a1c30;
+  --color-surface-secondary: #141626;
+  --color-surface-tertiary: #20223a;
+  --color-border: #2e3150;
+  --color-text-primary: #e2e4f0;
+  --color-text-secondary: #9498b0;
+  --color-text-muted: #5c6080;
+  --color-danger: #CD5050;
+  --color-warning: #E08B3A;
 }
 
 body {
@@ -59,6 +59,11 @@ select {
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: border-color 0.15s;
+}
+
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
 }
 
 select:focus {

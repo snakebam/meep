@@ -14,8 +14,8 @@ function getDueColor(dateStr: string): { color: string; showWarning: boolean } {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   const diff = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff <= 1) return { color: 'text-red-500', showWarning: true }
-  if (diff <= 3) return { color: 'text-orange-500', showWarning: true }
+  if (diff <= 1) return { color: 'text-danger', showWarning: true }
+  if (diff <= 3) return { color: 'text-warning', showWarning: true }
   return { color: 'text-accent-600', showWarning: false }
 }
 

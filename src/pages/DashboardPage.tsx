@@ -29,8 +29,8 @@ function getDueColor(dateStr: string): { color: string; showWarning: boolean } {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   const diff = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff <= 1) return { color: 'text-red-500', showWarning: true }
-  if (diff <= 3) return { color: 'text-orange-500', showWarning: true }
+  if (diff <= 1) return { color: 'text-danger', showWarning: true }
+  if (diff <= 3) return { color: 'text-warning', showWarning: true }
   return { color: 'text-accent-600', showWarning: false }
 }
 
@@ -43,8 +43,8 @@ function MiniTaskCard({ task, onToggleDone, onDelete }: { task: Task; onToggleDo
     <div
       className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
         task.is_done
-          ? 'border-border bg-white/60 opacity-50'
-          : 'border-white/40 bg-white/60 hover:bg-white/80'
+          ? 'border-border bg-surface-tertiary/80 opacity-50'
+          : 'border-border/60 bg-surface-tertiary/80 hover:bg-surface-tertiary'
       }`}
       onClick={() => navigate(`/tasks/${task.id}`)}
     >
@@ -262,7 +262,7 @@ export function DashboardPage() {
                       onChange={e => setEditSubjectName(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleUpdateSubject(group.subject!.id)}
                       autoFocus
-                      className="flex-1 text-xs px-1 py-0 rounded border border-white/30 outline-none min-w-0 bg-white/20 text-inherit placeholder:text-inherit/50"
+                      className="flex-1 text-xs px-1 py-0 rounded border border-surface/30 outline-none min-w-0 bg-surface/20 text-inherit placeholder:text-inherit/50"
                     />
                     <button onClick={() => handleUpdateSubject(group.subject!.id)} style={{ color: contrastText(color) }}><Check className="w-3 h-3" /></button>
                     <button onClick={() => setEditingSubjectId(null)} style={{ color: contrastText(color), opacity: 0.7 }}><X className="w-3 h-3" /></button>
@@ -311,7 +311,7 @@ export function DashboardPage() {
                   return (
                     <div key={assignment.id} className="flex flex-col">
                       {/* Assignment heading row */}
-                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-black/[0.04] transition-colors group/assignment">
+                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-white/[0.04] transition-colors group/assignment">
                         {linkedTasks.length > 0 && (
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleCollapse(assignment.id) }}
@@ -348,7 +348,7 @@ export function DashboardPage() {
                             onClick={() => toggleCollapse(assignment.id)}
                             className="group/line flex flex-col items-center w-4 shrink-0 pt-0.5 pb-1 cursor-pointer"
                           >
-                            <div className="w-[2px] flex-1 rounded-full bg-border group-hover/line:bg-text-muted transition-colors" />
+                            <div className="w-[2px] flex-1 rounded-full bg-text-muted/40 group-hover/line:bg-text-muted transition-colors" />
                           </button>
                           {/* Tasks */}
                           <div className="flex-1 flex flex-col gap-1 py-0.5 min-w-0">
@@ -373,7 +373,7 @@ export function DashboardPage() {
               </div>
 
               {/* Inline add task — always visible */}
-              <div className="px-2 pb-2 pt-1.5 shrink-0 bg-black/[0.03] border-t border-black/[0.04]">
+              <div className="px-2 pb-2 pt-1.5 shrink-0 bg-white/[0.08] border-t border-white/[0.08]">
                 <InlineAddTask subjectId={group.subject?.id ?? null} onAdd={addTask} />
               </div>
             </div>

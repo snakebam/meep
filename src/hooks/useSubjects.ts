@@ -1,17 +1,32 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { migrateColor } from '../lib/utils'
 import type { Subject } from '../types'
 
 export function useSubjects() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
+  const migrated = useRef(false)
 
   const fetch = useCallback(async () => {
     const { data } = await supabase
       .from('subjects')
       .select('*')
       .order('sort_order', { ascending: true })
-    if (data) setSubjects(data)
+    if (data) {
+      // One-time migration of old bright colors to new palette
+      if (!migrated.current) {
+        migrated.current = true
+        for (const s of data) {
+          const newColor = migrateColor(s.color)
+          if (newColor) {
+            supabase.from('subjects').update({ color: newColor }).eq('id', s.id).then()
+            s.color = newColor
+          }
+        }
+      }
+      setSubjects(data)
+    }
     setLoading(false)
   }, [])
 

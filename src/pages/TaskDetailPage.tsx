@@ -112,7 +112,7 @@ export function TaskDetailPage() {
 
         {due && (
           <span className={`text-xs px-2 py-0.5 rounded-full ${
-            due.urgent ? 'bg-red-100 text-danger' : 'bg-surface-tertiary text-text-muted'
+            due.urgent ? 'bg-danger/20 text-danger' : 'bg-surface-tertiary text-text-muted'
           }`}>
             {due.label}
           </span>
@@ -120,7 +120,7 @@ export function TaskDetailPage() {
 
         <button
           onClick={handleDelete}
-          className="p-1.5 rounded-lg hover:bg-red-50 text-text-muted hover:text-danger transition-colors"
+          className="p-1.5 rounded-lg hover:bg-danger/10 text-text-muted hover:text-danger transition-colors"
           title="Delete task"
         >
           <Trash2 className="w-4 h-4" />

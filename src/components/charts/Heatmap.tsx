@@ -8,12 +8,12 @@ interface HeatmapProps {
 
 function getColor(count: number): string {
   if (count === 0) return 'var(--color-surface-tertiary)'
-  if (count === 1) return '#bbf7d0'
-  if (count <= 2) return '#86efac'
-  if (count <= 3) return '#4ade80'
-  if (count <= 5) return '#22c55e'
-  if (count <= 8) return '#16a34a'
-  return '#15803d'
+  if (count === 1) return '#3d3520'
+  if (count <= 2) return '#5c4f2e'
+  if (count <= 3) return '#8a6d20'
+  if (count <= 5) return '#b8912a'
+  if (count <= 8) return '#c9a030'
+  return '#D4A934'
 }
 
 export function Heatmap({ data, onSetDayCount }: HeatmapProps) {

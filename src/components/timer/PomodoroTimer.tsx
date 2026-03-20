@@ -60,7 +60,7 @@ export function PomodoroTimer({
         ) : timerState === 'running' ? (
           <button
             onClick={onStop}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-danger text-white rounded-lg text-sm font-bold hover:bg-red-600 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-danger text-white rounded-lg text-sm font-bold hover:bg-danger/80 transition-colors"
           >
             <Square className="w-3.5 h-3.5" />
             LOCK OUT

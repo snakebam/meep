@@ -4,11 +4,11 @@ interface GrowthChartProps {
   data: { day: string; count: number }[]
 }
 
-// 12 shades of green for 1-12 pomos
+// 12 shades from dark to bright gold for 1-12 pomos
 const GREEN_SHADES = [
-  '#f0fdf4', '#dcfce7', '#bbf7d0', '#86efac',
-  '#4ade80', '#22c55e', '#16a34a', '#15803d',
-  '#166534', '#14532d', '#052e16', '#022c22',
+  '#1e1c14', '#2a2618', '#3d3520', '#5c4f2e',
+  '#7a6522', '#8a6d20', '#a88528', '#b8912a',
+  '#c09a2e', '#c9a030', '#D4A934', '#e0b840',
 ]
 
 function getGreenForCount(count: number): string {
