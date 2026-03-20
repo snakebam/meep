@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, X, Pencil, Trash2, Check } from 'lucide-react'
 import { getNextColor } from '../../lib/utils'
 import type { Subject } from '../../types'
@@ -11,6 +12,7 @@ interface SubjectSidebarProps {
 }
 
 export function SubjectSidebar({ subjects, onAdd, onUpdate, onDelete }: SubjectSidebarProps) {
+  const navigate = useNavigate()
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -63,9 +65,13 @@ export function SubjectSidebar({ subjects, onAdd, onUpdate, onDelete }: SubjectS
 
       <div className="flex flex-col gap-1">
         {subjects.map(subject => (
-          <div key={subject.id} className="group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-tertiary transition-colors">
+          <div
+            key={subject.id}
+            className="group relative flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg border border-border/60 hover:bg-surface-tertiary transition-colors overflow-hidden"
+          >
+            {/* Color tab on right edge */}
             <div
-              className="w-2.5 h-2.5 rounded-full shrink-0"
+              className="absolute right-0 top-0 bottom-0 w-1 rounded-l-sm"
               style={{ backgroundColor: subject.color }}
             />
             {editingId === subject.id ? (
@@ -86,7 +92,12 @@ export function SubjectSidebar({ subjects, onAdd, onUpdate, onDelete }: SubjectS
               </div>
             ) : (
               <>
-                <span className="text-sm text-text-primary truncate flex-1">{subject.name}</span>
+                <span
+                  className="text-sm text-text-primary truncate flex-1 cursor-pointer hover:text-primary-600 transition-colors"
+                  onClick={() => navigate(`/subjects/${subject.id}`)}
+                >
+                  {subject.name}
+                </span>
                 <div className="hidden group-hover:flex items-center gap-0.5">
                   <button
                     onClick={() => { setEditingId(subject.id); setEditName(subject.name) }}

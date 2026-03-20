@@ -60,26 +60,59 @@ function extractGoogleDriveId(url: string): string | null {
   return null
 }
 
-/** Extract OneDrive embed URL from a share link */
-function extractOnedriveEmbedUrl(url: string): string | null {
-  // OneDrive share links like https://1drv.ms/... or onedrive.live.com/...
-  if (url.includes('1drv.ms') || url.includes('onedrive.live.com') || url.includes('sharepoint.com')) {
-    // For OneDrive, the share link itself can be used in an iframe with /embed
-    // Or we can convert to an embed URL
-    if (url.includes('/embed')) return url
-    // Try to convert share links to embed format
-    return url.replace('/view', '/embed').replace('?view', '?embed')
-  }
-  return null
+/** Check if a URL is a OneDrive/SharePoint link */
+export function isOnedriveUrl(url: string): boolean {
+  return /1drv\.ms|onedrive\.live\.com|sharepoint\.com|onedrive\.com/i.test(url)
 }
 
-/** Convert a Google Drive share link to an embeddable URL */
+/** Convert a OneDrive/SharePoint share link to an embeddable URL */
+function toOnedriveEmbedUrl(url: string): string | null {
+  if (!isOnedriveUrl(url)) return null
+
+  // Already an embed URL
+  if (url.includes('/embed')) return url
+
+  // SharePoint links: convert to embed.aspx
+  if (url.includes('sharepoint.com')) {
+    // Pattern: https://xxx.sharepoint.com/:x:/g/personal/...
+    // Convert to: https://xxx.sharepoint.com/personal/.../_layouts/15/Doc.aspx?sourcedoc=...&action=embedview
+    // For simple share links, we can use the iframe approach
+    const spMatch = url.match(/(https:\/\/[^/]+\.sharepoint\.com)\/:(\w):\//)
+    if (spMatch) {
+      // Use Office Online embed: wrap the share URL
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`
+    }
+    // Direct file links on SharePoint
+    if (url.includes('/_layouts/')) {
+      return url.replace('action=view', 'action=embedview')
+    }
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`
+  }
+
+  // 1drv.ms short links - convert to embed
+  if (url.includes('1drv.ms')) {
+    // Encode the share URL for Office Online viewer
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`
+  }
+
+  // onedrive.live.com links
+  if (url.includes('onedrive.live.com') || url.includes('onedrive.com')) {
+    // Try the embed query param approach
+    const u = new URL(url)
+    u.searchParams.set('embed', '1')
+    return u.toString()
+  }
+
+  return url
+}
+
+/** Convert a Google Drive or OneDrive share link to an embeddable URL */
 export function toEmbedUrl(url: string): string {
   const driveId = extractGoogleDriveId(url)
   if (driveId) {
     return `https://drive.google.com/file/d/${driveId}/preview`
   }
-  const onedriveUrl = extractOnedriveEmbedUrl(url)
+  const onedriveUrl = toOnedriveEmbedUrl(url)
   if (onedriveUrl) return onedriveUrl
   return url
 }
@@ -109,17 +142,18 @@ export function detectLinkType(url: string): DetectedLinkType {
   // Google Drive — try to guess from context
   const driveId = extractGoogleDriveId(url)
   if (driveId) {
-    // Can't always tell from the URL, default to PDF for Drive links
-    // User can override via type selector
     return 'pdf'
   }
+
+  // OneDrive / SharePoint — embeddable documents
+  if (isOnedriveUrl(url)) return 'pdf'
 
   return 'link'
 }
 
 /** Check if a URL is from Google Drive or OneDrive */
 export function isCloudStorageUrl(url: string): boolean {
-  return !!extractGoogleDriveId(url) || !!extractOnedriveEmbedUrl(url)
+  return !!extractGoogleDriveId(url) || isOnedriveUrl(url)
 }
 
 const SUBJECT_COLORS = [

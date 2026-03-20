@@ -88,9 +88,7 @@ export function FolderColumn({
   }
 
   const getAccept = () => {
-    if (folder.name === 'PDFs') return '.pdf'
-    if (folder.name === 'Images') return 'image/*'
-    return '.pdf,image/*'
+    return '.pdf,image/*,.doc,.docx,.txt,.pptx,.xlsx'
   }
 
   const typeOptions: { value: DetectedLinkType; icon: React.ReactNode; label: string }[] = [
@@ -102,7 +100,7 @@ export function FolderColumn({
 
   return (
     <div
-      className="flex-1 min-w-[220px] max-w-[320px] bg-surface-secondary rounded-xl p-3 flex flex-col gap-2"
+      className="bg-surface-secondary rounded-xl p-3 flex flex-col gap-2 break-inside-avoid mb-3"
       onPaste={handlePaste}
       onDragOver={e => e.preventDefault()}
       onDrop={handleDrop}
@@ -157,11 +155,14 @@ export function FolderColumn({
         </div>
       )}
 
-      {/* Drag & paste hint */}
+      {/* Drag & paste hint - clickable to open file picker */}
       {attachments.length === 0 && !showAddLink && (
-        <div className="flex flex-col items-center gap-1 p-3 rounded-lg border-2 border-dashed border-border text-text-muted">
+        <div
+          className="flex flex-col items-center gap-1 p-3 rounded-lg border-2 border-dashed border-border text-text-muted cursor-pointer hover:border-primary-300 hover:text-primary-500 transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+        >
           <Upload className="w-4 h-4" />
-          <span className="text-[10px] text-center">Drop files, paste images, or click upload</span>
+          <span className="text-[10px] text-center">Drop files, paste images, or click to upload</span>
         </div>
       )}
 
@@ -211,7 +212,7 @@ export function FolderColumn({
       {/* Attachment list */}
       <div className="flex flex-col gap-1.5">
         {attachments.map(attachment => (
-          <div key={attachment.id} className="group relative">
+          <div key={attachment.id} className="group relative mb-1.5 break-inside-avoid">
             {attachment.type === 'youtube' && attachment.url && (
               <YoutubeEmbed url={attachment.url} title={attachment.title ?? undefined} />
             )}
@@ -221,7 +222,7 @@ export function FolderColumn({
                 <img
                   src={attachment.storage_path ? attachment.url : toDriveImageUrl(attachment.url)}
                   alt={attachment.title ?? ''}
-                  className="rounded-lg border border-border w-full object-cover max-h-40 cursor-pointer"
+                  className="rounded-lg border border-border w-full object-cover cursor-pointer"
                   onClick={() => setExpanded(expanded === attachment.id ? null : attachment.id)}
                 />
                 {expanded === attachment.id && (

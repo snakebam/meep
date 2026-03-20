@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronRight, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, Trash2, AlertTriangle } from 'lucide-react'
 import { formatDueDate } from '../../lib/utils'
 import type { Task } from '../../types'
 
@@ -9,9 +9,20 @@ interface TaskCardProps {
   onDelete: (id: string) => void
 }
 
+function getDueColor(dateStr: string): { color: string; showWarning: boolean } {
+  const date = new Date(dateStr + 'T00:00:00')
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const diff = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff <= 1) return { color: 'text-red-500', showWarning: true }
+  if (diff <= 3) return { color: 'text-orange-500', showWarning: true }
+  return { color: 'text-accent-600', showWarning: false }
+}
+
 export function TaskCard({ task, onToggleDone, onDelete }: TaskCardProps) {
   const navigate = useNavigate()
   const due = task.due_date ? formatDueDate(task.due_date) : null
+  const dueColor = task.due_date ? getDueColor(task.due_date) : null
 
   return (
     <div
@@ -51,8 +62,9 @@ export function TaskCard({ task, onToggleDone, onDelete }: TaskCardProps) {
         </span>
       )}
 
-      {due && (
-        <span className={`text-xs shrink-0 ${due.urgent ? 'text-danger font-medium' : 'text-text-muted'}`}>
+      {due && dueColor && !task.is_done && (
+        <span className={`flex items-center gap-0.5 text-xs shrink-0 font-medium ${dueColor.color}`}>
+          {dueColor.showWarning && <AlertTriangle className="w-3 h-3" />}
           {due.label}
         </span>
       )}

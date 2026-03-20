@@ -1,6 +1,5 @@
 import { Outlet } from 'react-router-dom'
 import { TopStatsBar } from './TopStatsBar'
-import { SubjectSidebar } from './SubjectSidebar'
 import { PomodoroTimer } from '../timer/PomodoroTimer'
 import { Heatmap } from '../charts/Heatmap'
 import { GrowthChart } from '../charts/GrowthChart'
@@ -19,7 +18,7 @@ export function AppLayout() {
 
       <div className="flex flex-1">
         {/* Left: Timer + Heatmap + Growth */}
-        <div className="w-64 border-r border-border bg-surface p-4 flex flex-col items-center pt-6 gap-6 overflow-auto">
+        <div className="w-64 border-r border-border bg-surface p-4 flex flex-col items-center pt-6 gap-6 overflow-auto shrink-0">
           <PomodoroTimer
             remaining={pomodoro.remaining}
             timerState={pomodoro.timerState}
@@ -29,6 +28,7 @@ export function AppLayout() {
             onSubjectChange={pomodoro.setSubjectId}
             onStart={pomodoro.start}
             onStop={pomodoro.stop}
+            onComplete={pomodoro.justCompleted}
           />
 
           <div className="w-full border-t border-border pt-4">
@@ -40,18 +40,10 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Center: Main content */}
+        {/* Center: Main content - full width, no right sidebar */}
         <div className="flex-1 overflow-auto">
-          <Outlet context={{ subjects, stats }} />
+          <Outlet context={{ subjects, addSubject, updateSubject, deleteSubject, stats }} />
         </div>
-
-        {/* Right: Subject sidebar */}
-        <SubjectSidebar
-          subjects={subjects}
-          onAdd={addSubject}
-          onUpdate={updateSubject}
-          onDelete={deleteSubject}
-        />
       </div>
     </div>
   )

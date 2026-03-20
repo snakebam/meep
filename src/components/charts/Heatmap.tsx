@@ -6,78 +6,104 @@ interface HeatmapProps {
 
 function getColor(count: number): string {
   if (count === 0) return 'var(--color-surface-tertiary)'
-  if (count === 1) return 'var(--color-accent-200)'
-  if (count <= 3) return 'var(--color-accent-400)'
-  if (count <= 5) return 'var(--color-accent-500)'
-  return 'var(--color-accent-700)'
+  if (count === 1) return '#bbf7d0'
+  if (count <= 2) return '#86efac'
+  if (count <= 3) return '#4ade80'
+  if (count <= 5) return '#22c55e'
+  if (count <= 8) return '#16a34a'
+  return '#15803d'
 }
 
 export function Heatmap({ data }: HeatmapProps) {
-  const cells: { day: string; count: number; dayOfWeek: number; weekIndex: number }[] = []
+  const months: {
+    name: string
+    weeks: { day: string; count: number; dayNum: number; isToday: boolean }[][]
+  }[] = []
 
   if (data.length > 0) {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const today = new Date().toISOString().split('T')[0]
+
+    const dayMap = new Map<string, number>()
+    for (const d of data) dayMap.set(d.day, d.count)
+
     const firstDate = new Date(data[0].day + 'T00:00:00')
-    const toDow = (d: Date) => (d.getDay() + 6) % 7
+    const lastDate = new Date(data[data.length - 1].day + 'T00:00:00')
 
-    let weekIndex = 0
-    let lastDow = toDow(firstDate)
+    let current = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1)
+    const end = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 0)
 
-    for (const item of data) {
-      const date = new Date(item.day + 'T00:00:00')
-      const dow = toDow(date)
-      if (dow < lastDow) weekIndex++
-      lastDow = dow
-      cells.push({ ...item, dayOfWeek: dow, weekIndex })
+    while (current <= end) {
+      const year = current.getFullYear()
+      const month = current.getMonth()
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      const firstDow = (new Date(year, month, 1).getDay() + 6) % 7
+
+      const weeks: { day: string; count: number; dayNum: number; isToday: boolean }[][] = []
+      let week: typeof weeks[0] = []
+
+      for (let i = 0; i < firstDow; i++) {
+        week.push({ day: '', count: 0, dayNum: 0, isToday: false })
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        week.push({ day: dateStr, count: dayMap.get(dateStr) ?? 0, dayNum: d, isToday: dateStr === today })
+        if (week.length === 7) { weeks.push(week); week = [] }
+      }
+      if (week.length > 0) {
+        while (week.length < 7) week.push({ day: '', count: 0, dayNum: 0, isToday: false })
+        weeks.push(week)
+      }
+
+      months.push({ name: monthNames[month], weeks })
+      current = new Date(year, month + 1, 1)
     }
   }
 
-  const numWeeks = cells.length > 0 ? cells[cells.length - 1].weekIndex + 1 : 5
-  const shortLabels = ['M', '', 'W', '', 'F', '', 'S']
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide">Activity</h3>
-      </div>
+      <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Activity</h3>
 
-      <div className="flex gap-[3px]">
-        {/* Day labels */}
-        <div className="flex flex-col gap-[3px] shrink-0 mr-0.5">
-          {shortLabels.map((label, i) => (
-            <div key={i} className="h-[14px] flex items-center justify-end">
-              <span className="text-[9px] text-text-muted leading-none">{label}</span>
+      <div className="overflow-y-auto max-h-[280px]">
+        <div className="flex flex-col gap-3">
+          {months.map((month, mi) => (
+            <div key={mi} className="shrink-0">
+              <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wide mb-1 text-center">
+                {month.name}
+              </div>
+              <div className="grid grid-cols-7 gap-[2px] mb-[2px]">
+                {dayLabels.map((label, i) => (
+                  <div key={i} className="w-[18px] h-[12px] flex items-center justify-center">
+                    <span className="text-[7px] text-text-muted">{label}</span>
+                  </div>
+                ))}
+              </div>
+              {month.weeks.map((week, wi) => (
+                <div key={wi} className="grid grid-cols-7 gap-[2px]">
+                  {week.map((cell, ci) => (
+                    <div
+                      key={ci}
+                      className={`w-[18px] h-[18px] rounded-[3px] flex items-center justify-center ${
+                        cell.isToday ? 'ring-1 ring-primary-400' : ''
+                      }`}
+                      style={{ backgroundColor: cell.day ? getColor(cell.count) : 'transparent' }}
+                      title={cell.day ? `${cell.day}: ${cell.count} pomodoros` : ''}
+                    >
+                      {cell.dayNum > 0 && (
+                        <span className={`text-[7px] font-medium ${cell.count > 0 ? 'text-white' : 'text-text-muted'}`}>
+                          {cell.dayNum}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           ))}
         </div>
-
-        {/* Week columns - stretch to fill sidebar width */}
-        {Array.from({ length: numWeeks }, (_, weekIdx) => (
-          <div key={weekIdx} className="flex flex-col gap-[3px] flex-1 min-w-0">
-            {Array.from({ length: 7 }, (_, dayIdx) => {
-              const cell = cells.find(c => c.weekIndex === weekIdx && c.dayOfWeek === dayIdx)
-              return (
-                <div
-                  key={dayIdx}
-                  className="h-[14px] rounded-[3px] transition-colors"
-                  style={{ backgroundColor: getColor(cell?.count ?? 0) }}
-                  title={cell ? `${cell.day}: ${cell.count} pomodoros` : ''}
-                />
-              )
-            })}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-1 mt-2 justify-end">
-        <span className="text-[9px] text-text-muted">Less</span>
-        {[0, 1, 2, 4, 6].map(n => (
-          <div
-            key={n}
-            className="w-[10px] h-[10px] rounded-[2px]"
-            style={{ backgroundColor: getColor(n) }}
-          />
-        ))}
-        <span className="text-[9px] text-text-muted">More</span>
       </div>
     </div>
   )

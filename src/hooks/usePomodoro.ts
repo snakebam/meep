@@ -43,6 +43,7 @@ export function usePomodoro() {
   const [timerState, setTimerState] = useState<TimerState>(saved.current?.state ?? 'idle')
   const [subjectId, setSubjectId] = useState<string | null>(saved.current?.subjectId ?? null)
   const [startedAt, setStartedAt] = useState<string | null>(saved.current?.startedAt ?? null)
+  const [justCompleted, setJustCompleted] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const clearTimer = useCallback(() => {
@@ -56,6 +57,7 @@ export function usePomodoro() {
     clearTimer()
     setTimerState('completed')
     setRemaining(0)
+    setJustCompleted(true)
     saveTimerState(null)
 
     // Record the pomodoro
@@ -85,13 +87,14 @@ export function usePomodoro() {
       // Audio not available
     }
 
-    // Reset after a brief moment
+    // Reset after showing YIPEEE
     setTimeout(() => {
       setTimerState('idle')
       setRemaining(POMODORO_DURATION)
       setSubjectId(null)
       setStartedAt(null)
-    }, 2000)
+      setJustCompleted(false)
+    }, 3000)
   }, [clearTimer, startedAt, subjectId])
 
   const start = useCallback(() => {
@@ -149,5 +152,6 @@ export function usePomodoro() {
     stop,
     progress,
     totalDuration: POMODORO_DURATION,
+    justCompleted,
   }
 }

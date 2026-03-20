@@ -12,6 +12,7 @@ interface PomodoroTimerProps {
   onSubjectChange: (id: string | null) => void
   onStart: () => void
   onStop: () => void
+  onComplete?: boolean
 }
 
 export function PomodoroTimer({
@@ -23,6 +24,7 @@ export function PomodoroTimer({
   onSubjectChange,
   onStart,
   onStop,
+  onComplete,
 }: PomodoroTimerProps) {
   return (
     <div className="flex flex-col items-center gap-3">
@@ -35,22 +37,29 @@ export function PomodoroTimer({
         )}
       </TimerCircle>
 
+      {/* YIPEEE notification */}
+      {onComplete && (
+        <div className="px-4 py-2 bg-accent-100 border border-accent-300 rounded-xl text-center animate-bounce">
+          <span className="text-sm font-bold text-accent-700">YIPEEE!</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {timerState === 'idle' ? (
           <button
             onClick={onStart}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-bold hover:bg-primary-700 transition-colors"
           >
             <Play className="w-3.5 h-3.5" />
-            Start
+            LOCK IN
           </button>
         ) : timerState === 'running' ? (
           <button
             onClick={onStop}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-danger text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-danger text-white rounded-lg text-sm font-bold hover:bg-red-600 transition-colors"
           >
             <Square className="w-3.5 h-3.5" />
-            Stop
+            LOCK OUT
           </button>
         ) : null}
       </div>
@@ -59,7 +68,7 @@ export function PomodoroTimer({
         <select
           value={subjectId ?? ''}
           onChange={e => onSubjectChange(e.target.value || null)}
-          className="text-xs px-2 py-1 rounded border border-border bg-surface text-text-secondary outline-none"
+          className="text-xs px-2.5 py-1.5 rounded-lg border border-border bg-surface text-text-secondary outline-none focus:border-primary-400 cursor-pointer"
         >
           <option value="">No subject</option>
           {subjects.map(s => (

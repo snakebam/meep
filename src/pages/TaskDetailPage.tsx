@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
-import { ArrowLeft, Calendar, Tag, Save, Plus, X } from 'lucide-react'
+import { ArrowLeft, Calendar, Tag, Save, Plus, X, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatDueDate } from '../lib/utils'
 import { useAttachments } from '../hooks/useAttachments'
 import { FolderColumn } from '../components/attachments/FolderColumn'
+import { RichTextEditor } from '../components/RichTextEditor'
 import type { Task, Subject } from '../types'
 
 interface OutletContext {
@@ -69,6 +70,12 @@ export function TaskDetailPage() {
     setSaving(false)
   }
 
+  const handleDelete = async () => {
+    if (!id) return
+    await supabase.from('tasks').delete().eq('id', id)
+    navigate('/')
+  }
+
   const handleAddFolder = async () => {
     if (!newFolderName.trim()) return
     await addFolder(newFolderName.trim())
@@ -110,6 +117,14 @@ export function TaskDetailPage() {
             {due.label}
           </span>
         )}
+
+        <button
+          onClick={handleDelete}
+          className="p-1.5 rounded-lg hover:bg-red-50 text-text-muted hover:text-danger transition-colors"
+          title="Delete task"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Metadata bar */}
@@ -149,12 +164,11 @@ export function TaskDetailPage() {
       {/* Content: Note + Folders (or Note + PDF when viewing) */}
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Left: Note */}
-        <div className={activePdf ? 'w-1/2 min-w-0' : 'flex-1 min-w-0'}>
-          <textarea
+        <div className={activePdf ? 'w-1/2 min-w-0 flex flex-col' : 'flex-1 min-w-0 flex flex-col'}>
+          <RichTextEditor
             value={note}
-            onChange={e => setNote(e.target.value)}
+            onChange={setNote}
             placeholder="Write your notes here..."
-            className="w-full h-full min-h-[300px] p-3 rounded-xl border border-border bg-surface outline-none text-sm text-text-primary placeholder:text-text-muted resize-none focus:border-primary-300"
           />
         </div>
 
@@ -180,24 +194,26 @@ export function TaskDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {folders.map(folder => (
-              <FolderColumn
-                key={folder.id}
-                folder={folder}
-                attachments={attachments.get(folder.id) ?? []}
-                onAddAttachment={addAttachment}
-                onUploadFile={uploadFile}
-                onDeleteAttachment={deleteAttachment}
-                onDeleteFolder={folder.is_default ? undefined : () => deleteFolder(folder.id)}
-                onOpenPdf={(url, pdfTitle) => setActivePdf({ url, title: pdfTitle })}
-              />
-            ))}
+          <div className="flex flex-col flex-1 min-w-0 overflow-auto">
+            <div className="columns-[220px] gap-3 pb-2 flex-1">
+              {folders.map(folder => (
+                <FolderColumn
+                  key={folder.id}
+                  folder={folder}
+                  attachments={attachments.get(folder.id) ?? []}
+                  onAddAttachment={addAttachment}
+                  onUploadFile={uploadFile}
+                  onDeleteAttachment={deleteAttachment}
+                  onDeleteFolder={folder.is_default ? undefined : () => deleteFolder(folder.id)}
+                  onOpenPdf={(url, pdfTitle) => setActivePdf({ url, title: pdfTitle })}
+                />
+              ))}
+            </div>
 
-            {/* Add folder button */}
-            <div className="min-w-[120px] flex flex-col items-center justify-center">
+            {/* Add folder - compact bottom right */}
+            <div className="flex justify-end mt-1">
               {addingFolder ? (
-                <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
                   <input
                     value={newFolderName}
                     onChange={e => setNewFolderName(e.target.value)}
@@ -206,22 +222,20 @@ export function TaskDetailPage() {
                     autoFocus
                     className="text-xs px-2 py-1 rounded border border-border outline-none focus:border-primary-400 w-24"
                   />
-                  <div className="flex gap-1">
-                    <button onClick={handleAddFolder} className="text-xs px-2 py-0.5 bg-primary-600 text-white rounded">
-                      OK
-                    </button>
-                    <button onClick={() => setAddingFolder(false)} className="text-xs px-2 py-0.5 text-text-muted">
-                      Cancel
-                    </button>
-                  </div>
+                  <button onClick={handleAddFolder} className="text-xs px-2 py-1 bg-primary-600 text-white rounded">
+                    OK
+                  </button>
+                  <button onClick={() => setAddingFolder(false)} className="text-xs px-2 py-1 text-text-muted">
+                    Cancel
+                  </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setAddingFolder(true)}
-                  className="flex flex-col items-center gap-1 text-text-muted hover:text-primary-500 transition-colors"
+                  className="flex items-center gap-1 text-xs text-text-muted hover:text-primary-500 transition-colors"
                 >
-                  <Plus className="w-5 h-5" />
-                  <span className="text-xs">Add folder</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  Add folder
                 </button>
               )}
             </div>
