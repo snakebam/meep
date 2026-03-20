@@ -53,11 +53,15 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
   }
 
   const deleteFolder = async (folderId: string) => {
-    // Delete uploaded files from storage
+    // Delete uploaded files from local storage
     const folderAttachments = attachments.get(folderId) ?? []
     for (const a of folderAttachments) {
       if (a.storage_path) {
-        await supabase.storage.from('attachments').remove([a.storage_path])
+        await fetch('/api/delete-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storagePath: a.storage_path }),
+        })
       }
     }
     await supabase.from('task_folders').delete().eq('id', folderId)
@@ -93,20 +97,23 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
     return data
   }
 
-  /** Upload a file (PDF or image) to Supabase Storage */
+  /** Upload a file (PDF or image) to local storage */
   const uploadFile = async (folderId: string, file: File) => {
-    const path = `${parentId}/${folderId}/${Date.now()}_${file.name}`
-    const { error: uploadError } = await supabase.storage
-      .from('attachments')
-      .upload(path, file, { contentType: file.type })
+    const storagePath = `${parentId}/${folderId}/${Date.now()}_${file.name}`
 
-    if (uploadError) {
-      console.error('Upload failed:', uploadError.message)
-      alert('Upload failed: ' + uploadError.message)
-      throw uploadError
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('path', storagePath)
+
+    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Upload failed' }))
+      console.error('Upload failed:', err.error)
+      alert('Upload mislukt: ' + err.error)
+      throw new Error(err.error)
     }
 
-    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+    const { url } = await res.json()
 
     const type = file.type === 'application/pdf' ? 'pdf' as const
       : file.type.startsWith('image/') ? 'image' as const
@@ -118,8 +125,8 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
         folder_id: folderId,
         type,
         title: file.name,
-        url: urlData.publicUrl,
-        storage_path: path,
+        url,
+        storage_path: storagePath,
       })
       .select()
       .single()
@@ -136,9 +143,13 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
   }
 
   const deleteAttachment = async (attachment: Attachment) => {
-    // Delete from storage if it was an uploaded file
+    // Delete from local storage if it was an uploaded file
     if (attachment.storage_path) {
-      await supabase.storage.from('attachments').remove([attachment.storage_path])
+      await fetch('/api/delete-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath: attachment.storage_path }),
+      })
     }
     await supabase.from('attachments').delete().eq('id', attachment.id)
     setAttachments(prev => {
