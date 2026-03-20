@@ -10,7 +10,9 @@ import path from 'path'
  * - POST /api/upload          → saves file, returns { url, storagePath }
  * - POST /api/delete-file     → deletes a local file
  */
-export function localFilesPlugin(localDir: string): Plugin {
+export function localFilesPlugin(rawDir: string): Plugin {
+  // Normalize to absolute path with consistent separators
+  const localDir = path.resolve(rawDir)
   // Ensure the directory exists
   if (!fs.existsSync(localDir)) {
     fs.mkdirSync(localDir, { recursive: true })
@@ -22,7 +24,7 @@ export function localFilesPlugin(localDir: string): Plugin {
       // Serve local files
       server.middlewares.use('/local-files', (req, res, next) => {
         if (req.method !== 'GET') return next()
-        const filePath = path.join(localDir, decodeURIComponent(req.url || ''))
+        const filePath = path.resolve(localDir, decodeURIComponent(req.url || '').replace(/^\//, ''))
         // Prevent path traversal
         if (!filePath.startsWith(localDir)) {
           res.statusCode = 403
@@ -92,7 +94,7 @@ export function localFilesPlugin(localDir: string): Plugin {
 
             const storagePath = pathPart.data.toString('utf-8')
             // Prevent path traversal
-            const fullPath = path.join(localDir, storagePath)
+            const fullPath = path.resolve(localDir, storagePath)
             if (!fullPath.startsWith(localDir)) {
               res.statusCode = 403
               res.end(JSON.stringify({ error: 'Invalid path' }))
@@ -128,7 +130,7 @@ export function localFilesPlugin(localDir: string): Plugin {
         req.on('end', () => {
           try {
             const { storagePath } = JSON.parse(Buffer.concat(chunks).toString())
-            const fullPath = path.join(localDir, storagePath)
+            const fullPath = path.resolve(localDir, storagePath)
             if (!fullPath.startsWith(localDir)) {
               res.statusCode = 403
               res.end(JSON.stringify({ error: 'Invalid path' }))
