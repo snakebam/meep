@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { Check, ChevronRight, Trash2, Plus, AlertTriangle, Pencil, X, Calendar, FileText } from 'lucide-react'
+import { Check, ChevronRight, ChevronDown, Trash2, Plus, AlertTriangle, Pencil, X, Calendar, FileText } from 'lucide-react'
 import { useTasks } from '../hooks/useTasks'
 import { supabase } from '../lib/supabase'
 import { formatDueDate, getNextColor } from '../lib/utils'
-import type { Subject, Task } from '../types'
+import type { Subject, Task, Assignment } from '../types'
 
 /** Returns 'white' or 'black' depending on which contrasts better with the given hex color */
 function contrastText(hex: string): string {
@@ -126,14 +126,55 @@ function InlineAddTask({ subjectId, onAdd }: { subjectId: string | null; onAdd: 
   )
 }
 
+interface AssignmentWithTasks extends Assignment {
+  linkedTaskIds: Set<string>
+}
+
 export function DashboardPage() {
   const { subjects, addSubject, updateSubject, deleteSubject } = useOutletContext<OutletContext>()
   const { tasks, addTask, toggleDone, deleteTask } = useTasks()
+  const navigate = useNavigate()
 
   const [addingSubject, setAddingSubject] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null)
   const [editSubjectName, setEditSubjectName] = useState('')
+  const [collapsedAssignments, setCollapsedAssignments] = useState<Set<string>>(new Set())
+
+  const toggleCollapse = (assignmentId: string) => {
+    setCollapsedAssignments(prev => {
+      const next = new Set(prev)
+      if (next.has(assignmentId)) next.delete(assignmentId)
+      else next.add(assignmentId)
+      return next
+    })
+  }
+
+  // Fetch assignments and their linked task IDs
+  const [assignments, setAssignments] = useState<AssignmentWithTasks[]>([])
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      const { data: assignmentData } = await supabase
+        .from('assignments')
+        .select('*, assignment_tasks(task_id)')
+        .order('sort_order', { ascending: true })
+      if (assignmentData) {
+        setAssignments(assignmentData.map((a: Assignment & { assignment_tasks: { task_id: string }[] }) => ({
+          ...a,
+          linkedTaskIds: new Set(a.assignment_tasks?.map((at: { task_id: string }) => at.task_id) ?? [])
+        })))
+      }
+    }
+    fetchAssignments()
+
+    // Re-fetch when navigating back to dashboard
+    const channel = supabase
+      .channel('assignments-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, fetchAssignments)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_tasks' }, fetchAssignments)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const activeTasks = tasks
     .filter(t => !t.is_done)
@@ -144,13 +185,23 @@ export function DashboardPage() {
       return a.due_date.localeCompare(b.due_date)
     })
 
-  const subjectGroups: { subject: Subject | null; tasks: Task[] }[] = []
+  // Build a set of all task IDs that are linked to any assignment
+  const allLinkedTaskIds = new Set<string>()
+  for (const a of assignments) {
+    for (const id of a.linkedTaskIds) allLinkedTaskIds.add(id)
+  }
+
+  const subjectGroups: { subject: Subject | null; tasks: Task[]; assignments: AssignmentWithTasks[] }[] = []
   for (const subject of subjects) {
-    subjectGroups.push({ subject, tasks: activeTasks.filter(t => t.subject_id === subject.id) })
+    subjectGroups.push({
+      subject,
+      tasks: activeTasks.filter(t => t.subject_id === subject.id),
+      assignments: assignments.filter(a => a.subject_id === subject.id),
+    })
   }
   const unassigned = activeTasks.filter(t => !t.subject_id)
   if (unassigned.length > 0) {
-    subjectGroups.push({ subject: null, tasks: unassigned })
+    subjectGroups.push({ subject: null, tasks: unassigned, assignments: [] })
   }
 
   const handleAddSubject = async () => {
@@ -167,12 +218,18 @@ export function DashboardPage() {
   }
 
   const handleCreateAssignment = async (subjectId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('assignments')
       .insert({ title: 'New assignment', subject_id: subjectId })
       .select()
       .single()
-    if (data) navigate(`/assignments/${data.id}`)
+    if (error) {
+      console.error('Failed to create assignment:', error)
+      return
+    }
+    if (data) {
+      window.location.href = `/assignments/${data.id}`
+    }
   }
 
   return (
@@ -214,30 +271,30 @@ export function DashboardPage() {
                   <>
                     <span
                       className="text-xs font-semibold uppercase tracking-wide cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => group.subject && window.location.assign(`/subjects/${group.subject.id}`)}
+                      onClick={() => group.subject && navigate(`/subjects/${group.subject.id}`)}
                     >
                       {group.subject?.name ?? 'No subject'}
                     </span>
                     <span className="text-[10px] opacity-70">({group.tasks.length})</span>
-                    <div className="flex items-center gap-0.5 ml-auto">
+                    <div className="flex items-center gap-1 ml-auto">
                       {group.subject && (
                         <button
-                          onClick={() => handleCreateAssignment(group.subject!.id)}
-                          className="opacity-70 hover:opacity-100 p-0.5 transition-opacity"
-                          title="New becijferde opdracht"
+                          onClick={(e) => { e.stopPropagation(); handleCreateAssignment(group.subject!.id) }}
+                          className="opacity-60 hover:opacity-100 p-0.5 transition-opacity"
+                          title="Nieuwe becijferde opdracht"
                         >
-                          <FileText className="w-3 h-3" />
+                          <FileText className="w-3.5 h-3.5" />
                         </button>
                       )}
                       {group.subject && (
-                        <div className="hidden group-hover:flex items-center gap-0.5">
-                          <button onClick={() => { setEditingSubjectId(group.subject!.id); setEditSubjectName(group.subject!.name) }} className="opacity-70 hover:opacity-100 p-0.5">
-                            <Pencil className="w-2.5 h-2.5" />
+                        <>
+                          <button onClick={() => { setEditingSubjectId(group.subject!.id); setEditSubjectName(group.subject!.name) }} className="opacity-50 hover:opacity-100 p-0.5 transition-opacity">
+                            <Pencil className="w-3 h-3" />
                           </button>
-                          <button onClick={() => deleteSubject(group.subject!.id)} className="opacity-70 hover:opacity-100 p-0.5">
-                            <Trash2 className="w-2.5 h-2.5" />
+                          <button onClick={() => { if (confirm(`Delete "${group.subject!.name}" and all its tasks?`)) deleteSubject(group.subject!.id) }} className="opacity-50 hover:opacity-100 p-0.5 transition-opacity">
+                            <Trash2 className="w-3 h-3" />
                           </button>
-                        </div>
+                        </>
                       )}
                     </div>
                   </>
@@ -246,11 +303,71 @@ export function DashboardPage() {
 
               {/* Task list - scrollable */}
               <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
-                {group.tasks.map(task => (
+                {/* Assignments as section headings with linked tasks — YouTube-style thread */}
+                {group.assignments.map(assignment => {
+                  const linkedTasks = group.tasks.filter(t => assignment.linkedTaskIds.has(t.id))
+                  const dueInfo = assignment.due_date ? getDueColor(assignment.due_date) : null
+                  const isCollapsed = collapsedAssignments.has(assignment.id)
+                  return (
+                    <div key={assignment.id} className="flex flex-col">
+                      {/* Assignment heading row */}
+                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-black/[0.04] transition-colors group/assignment">
+                        {linkedTasks.length > 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleCollapse(assignment.id) }}
+                            className="shrink-0 text-text-muted hover:text-text-secondary transition-colors p-0.5 -ml-0.5"
+                          >
+                            {isCollapsed
+                              ? <ChevronRight className="w-3 h-3" />
+                              : <ChevronDown className="w-3 h-3" />
+                            }
+                          </button>
+                        )}
+                        <FileText className="w-3 h-3 shrink-0" style={{ color }} />
+                        <span
+                          className="text-[11px] font-semibold text-text-primary flex-1 min-w-0 truncate hover:underline"
+                          onClick={() => navigate(`/assignments/${assignment.id}`)}
+                        >
+                          {assignment.title}
+                        </span>
+                        {dueInfo && assignment.due_date && (
+                          <span className={`text-[9px] font-medium shrink-0 ${dueInfo.color}`}>
+                            {dueInfo.showWarning && <AlertTriangle className="w-2 h-2 inline mr-0.5" />}
+                            {formatDueDate(assignment.due_date).label}
+                          </span>
+                        )}
+                        {linkedTasks.length > 0 && (
+                          <span className="text-[9px] text-text-muted shrink-0">{linkedTasks.length}</span>
+                        )}
+                      </div>
+                      {/* Thread line + linked tasks */}
+                      {linkedTasks.length > 0 && !isCollapsed && (
+                        <div className="flex ml-[15px]">
+                          {/* Thin thread line — clickable to collapse */}
+                          <button
+                            onClick={() => toggleCollapse(assignment.id)}
+                            className="group/line flex flex-col items-center w-4 shrink-0 pt-0.5 pb-1 cursor-pointer"
+                          >
+                            <div className="w-[2px] flex-1 rounded-full bg-border group-hover/line:bg-text-muted transition-colors" />
+                          </button>
+                          {/* Tasks */}
+                          <div className="flex-1 flex flex-col gap-1 py-0.5 min-w-0">
+                            {linkedTasks.map(task => (
+                              <MiniTaskCard key={task.id} task={task} onToggleDone={toggleDone} onDelete={deleteTask} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Unlinked tasks (not part of any assignment) */}
+                {group.tasks.filter(t => !allLinkedTaskIds.has(t.id)).map(task => (
                   <MiniTaskCard key={task.id} task={task} onToggleDone={toggleDone} onDelete={deleteTask} />
                 ))}
 
-                {group.tasks.length === 0 && (
+                {group.tasks.length === 0 && group.assignments.length === 0 && (
                   <p className="text-[10px] text-text-muted/50 text-center py-4">No tasks yet</p>
                 )}
               </div>
