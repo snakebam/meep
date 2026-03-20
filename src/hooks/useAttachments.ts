@@ -57,7 +57,7 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
     const folderAttachments = attachments.get(folderId) ?? []
     for (const a of folderAttachments) {
       if (a.storage_path) {
-        await fetch('/api/delete-file', {
+        await window.fetch('/api/delete-file', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ storagePath: a.storage_path }),
@@ -105,7 +105,7 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
     formData.append('file', file)
     formData.append('path', storagePath)
 
-    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+    const res = await window.fetch('/api/upload', { method: 'POST', body: formData })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Upload failed' }))
       console.error('Upload failed:', err.error)
@@ -145,7 +145,7 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
   const deleteAttachment = async (attachment: Attachment) => {
     // Delete from local storage if it was an uploaded file
     if (attachment.storage_path) {
-      await fetch('/api/delete-file', {
+      await window.fetch('/api/delete-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storagePath: attachment.storage_path }),
