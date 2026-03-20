@@ -1,30 +1,27 @@
 @echo off
-echo Starting VWO Learning Platform...
+echo ========================================
+echo   VWO Leerplatform - Opstarten...
+echo ========================================
 echo.
 
-:: First-time setup: if not a git repo, clone it properly
+:: First-time setup: connect this folder to GitHub (no cloning!)
 if not exist ".git" (
-    echo First-time setup — downloading app...
-    cd ..
-    ren meep meep-old
-    git clone https://github.com/snakebam/meep.git meep
-    :: Copy uploads folder from old install if it existed
-    if exist "meep-old\uploads" (
-        xcopy /E /I /Y "meep-old\uploads" "meep\uploads"
-    )
-    rmdir /S /Q meep-old
-    cd meep
+    echo Eerste keer opstarten - git instellen...
+    git init
+    git remote add origin https://github.com/snakebam/meep.git
+    git fetch origin
+    git reset origin/master
     echo.
 )
 
 :: Auto-update from GitHub
-echo Checking for updates...
-git pull
+echo Controleren op updates...
+git pull origin master
 echo.
 
 :: Create .env if missing
 if not exist ".env" (
-    echo Creating config file...
+    echo Config bestand aanmaken...
     (
         echo VITE_SUPABASE_URL=https://aorbstadcwyijinhdpzn.supabase.co
         echo VITE_SUPABASE_ANON_KEY=sb_publishable_KcP423K5D3ZdLCpu_0cgmw_hPTuQtpQ
@@ -35,13 +32,13 @@ if not exist ".env" (
 
 :: Install/update dependencies
 if not exist "node_modules" (
-    echo Installing dependencies...
+    echo Dependencies installeren dit duurt even...
     npm install
     echo.
 )
 
-echo Opening in browser...
+echo Browser openen...
 start http://localhost:5173
 
-echo Starting dev server...
+echo Server starten...
 npm run dev
