@@ -11,8 +11,8 @@ import path from 'path'
  * - POST /api/delete-file     → deletes a local file
  */
 export function localFilesPlugin(rawDir: string): Plugin {
-  // Normalize to absolute path with consistent separators
-  const localDir = path.resolve(rawDir)
+  // Normalize to absolute path (lowercase on Windows for consistent comparison)
+  const localDir = normalizePath(path.resolve(rawDir))
   // Ensure the directory exists
   if (!fs.existsSync(localDir)) {
     fs.mkdirSync(localDir, { recursive: true })
@@ -24,7 +24,7 @@ export function localFilesPlugin(rawDir: string): Plugin {
       // Serve local files
       server.middlewares.use('/local-files', (req, res, next) => {
         if (req.method !== 'GET') return next()
-        const filePath = path.resolve(localDir, decodeURIComponent(req.url || '').replace(/^\//, ''))
+        const filePath = normalizePath(path.resolve(localDir, decodeURIComponent(req.url || '').replace(/^\//, '')))
         // Prevent path traversal
         if (!filePath.startsWith(localDir)) {
           res.statusCode = 403
@@ -92,9 +92,9 @@ export function localFilesPlugin(rawDir: string): Plugin {
               return
             }
 
-            const storagePath = pathPart.data.toString('utf-8')
+            const storagePath = pathPart.data.toString('utf-8').trim()
             // Prevent path traversal
-            const fullPath = path.resolve(localDir, storagePath)
+            const fullPath = normalizePath(path.resolve(localDir, storagePath))
             if (!fullPath.startsWith(localDir)) {
               res.statusCode = 403
               res.end(JSON.stringify({ error: 'Invalid path' }))
@@ -130,7 +130,7 @@ export function localFilesPlugin(rawDir: string): Plugin {
         req.on('end', () => {
           try {
             const { storagePath } = JSON.parse(Buffer.concat(chunks).toString())
-            const fullPath = path.resolve(localDir, storagePath)
+            const fullPath = normalizePath(path.resolve(localDir, storagePath))
             if (!fullPath.startsWith(localDir)) {
               res.statusCode = 403
               res.end(JSON.stringify({ error: 'Invalid path' }))
@@ -195,6 +195,11 @@ function parseMultipart(body: Buffer, boundary: string) {
   }
 
   return parts
+}
+
+/** Normalize path for consistent comparison on Windows (lowercase drive letter, forward slashes) */
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/').replace(/^([A-Z]):/, (_, d) => d.toLowerCase() + ':')
 }
 
 function indexOf(buf: Buffer, search: Buffer, from: number): number {
