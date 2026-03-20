@@ -1,4 +1,4 @@
-import { Play, Square } from 'lucide-react'
+import { Play, Square, Flame, Timer } from 'lucide-react'
 import { TimerCircle } from './TimerCircle'
 import { formatTime } from '../../lib/utils'
 import type { Subject, TimerState } from '../../types'
@@ -13,6 +13,8 @@ interface PomodoroTimerProps {
   onStart: () => void
   onStop: () => void
   onComplete?: boolean
+  streak: number
+  pomosToday: number
 }
 
 export function PomodoroTimer({
@@ -25,9 +27,11 @@ export function PomodoroTimer({
   onStart,
   onStop,
   onComplete,
+  streak,
+  pomosToday,
 }: PomodoroTimerProps) {
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 w-full">
       <TimerCircle progress={progress} size={140}>
         <span className="text-3xl font-mono font-semibold text-text-primary">
           {formatTime(remaining)}
@@ -89,7 +93,20 @@ export function PomodoroTimer({
         </span>
       )}
 
-      <span className="text-xs text-text-muted">This week</span>
+      {/* Streak & Pomos today */}
+      <div className="w-full flex items-center justify-center gap-3 px-2 py-2 rounded-lg bg-surface-tertiary">
+        <div className="flex items-center gap-1">
+          <Flame className="w-3.5 h-3.5 text-warning" />
+          <span className="text-[11px] font-semibold text-text-primary">{streak}</span>
+          <span className="text-[10px] text-text-muted">day{streak !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="w-px h-3.5 bg-border" />
+        <div className="flex items-center gap-1">
+          <Timer className="w-3.5 h-3.5 text-primary-500" />
+          <span className="text-[11px] font-semibold text-text-primary">{pomosToday}</span>
+          <span className="text-[10px] text-text-muted">today</span>
+        </div>
+      </div>
     </div>
   )
 }

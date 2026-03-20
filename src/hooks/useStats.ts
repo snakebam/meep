@@ -76,7 +76,38 @@ export function useStats() {
     setLoading(false)
   }, [])
 
+  const setDayCount = useCallback(async (day: string, count: number) => {
+    // Get existing pomodoros for this day
+    const dayStart = `${day}T00:00:00`
+    const dayEnd = `${day}T23:59:59`
+    const { data: existing } = await supabase
+      .from('pomodoros')
+      .select('id')
+      .eq('completed', true)
+      .gte('started_at', dayStart)
+      .lte('started_at', dayEnd)
+
+    const currentCount = existing?.length ?? 0
+
+    if (count > currentCount) {
+      // Insert additional pomodoros
+      const toInsert = Array.from({ length: count - currentCount }, (_, i) => ({
+        started_at: `${day}T${String(12 + i).padStart(2, '0')}:00:00`,
+        ended_at: `${day}T${String(12 + i).padStart(2, '0')}:25:00`,
+        duration: 1500,
+        completed: true,
+      }))
+      await supabase.from('pomodoros').insert(toInsert)
+    } else if (count < currentCount) {
+      // Delete excess pomodoros (remove from the end)
+      const toDelete = existing!.slice(0, currentCount - count).map(p => p.id)
+      await supabase.from('pomodoros').delete().in('id', toDelete)
+    }
+
+    await fetch()
+  }, [fetch])
+
   useEffect(() => { fetch() }, [fetch])
 
-  return { streak, pomosToday, heatmapData, weeklyData, loading, refetch: fetch }
+  return { streak, pomosToday, heatmapData, weeklyData, loading, refetch: fetch, setDayCount }
 }

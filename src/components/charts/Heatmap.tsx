@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import type { HeatmapDay } from '../../types'
 
 interface HeatmapProps {
   data: HeatmapDay[]
+  onSetDayCount?: (day: string, count: number) => void
 }
 
 function getColor(count: number): string {
@@ -14,7 +16,9 @@ function getColor(count: number): string {
   return '#15803d'
 }
 
-export function Heatmap({ data }: HeatmapProps) {
+export function Heatmap({ data, onSetDayCount }: HeatmapProps) {
+  const [editingDay, setEditingDay] = useState<{ day: string; count: number } | null>(null)
+
   const months: {
     name: string
     weeks: { day: string; count: number; dayNum: number; isToday: boolean }[][]
@@ -63,44 +67,89 @@ export function Heatmap({ data }: HeatmapProps) {
 
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
+  const handleCellClick = (cell: { day: string; count: number; dayNum: number }) => {
+    if (!cell.day || !onSetDayCount) return
+    setEditingDay({ day: cell.day, count: cell.count })
+  }
+
+  const handleCountSubmit = () => {
+    if (!editingDay || !onSetDayCount) return
+    onSetDayCount(editingDay.day, editingDay.count)
+    setEditingDay(null)
+  }
+
   return (
     <div>
       <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Activity</h3>
 
-      <div className="overflow-y-auto max-h-[280px]">
-        <div className="flex flex-col gap-3">
+      {/* Edit popover */}
+      {editingDay && (
+        <div className="mb-2 p-2 rounded-lg border border-border bg-surface flex items-center gap-2">
+          <span className="text-[10px] text-text-muted">{editingDay.day}</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditingDay({ ...editingDay, count: Math.max(0, editingDay.count - 1) })}
+              className="w-5 h-5 rounded bg-surface-tertiary text-text-secondary text-xs font-bold flex items-center justify-center hover:bg-surface-secondary"
+            >
+              −
+            </button>
+            <span className="text-xs font-semibold text-text-primary w-4 text-center">{editingDay.count}</span>
+            <button
+              onClick={() => setEditingDay({ ...editingDay, count: editingDay.count + 1 })}
+              className="w-5 h-5 rounded bg-surface-tertiary text-text-secondary text-xs font-bold flex items-center justify-center hover:bg-surface-secondary"
+            >
+              +
+            </button>
+          </div>
+          <button onClick={handleCountSubmit} className="text-[10px] px-1.5 py-0.5 bg-primary-600 text-white rounded font-medium">OK</button>
+          <button onClick={() => setEditingDay(null)} className="text-[10px] text-text-muted">✕</button>
+        </div>
+      )}
+
+      <div className="overflow-y-auto flex-1">
+        <div className="flex flex-col gap-4">
           {months.map((month, mi) => (
-            <div key={mi} className="shrink-0">
-              <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wide mb-1 text-center">
+            <div key={mi}>
+              <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wide mb-1.5 text-center">
                 {month.name}
               </div>
-              <div className="grid grid-cols-7 gap-[2px] mb-[2px]">
-                {dayLabels.map((label, i) => (
-                  <div key={i} className="w-[18px] h-[12px] flex items-center justify-center">
-                    <span className="text-[7px] text-text-muted">{label}</span>
-                  </div>
-                ))}
-              </div>
-              {month.weeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7 gap-[2px]">
-                  {week.map((cell, ci) => (
-                    <div
-                      key={ci}
-                      className={`w-[18px] h-[18px] rounded-[3px] flex items-center justify-center ${
-                        cell.isToday ? 'ring-1 ring-primary-400' : ''
-                      }`}
-                      style={{ backgroundColor: cell.day ? getColor(cell.count) : 'transparent' }}
-                      title={cell.day ? `${cell.day}: ${cell.count} pomodoros` : ''}
-                    >
-                      {cell.dayNum > 0 && (
-                        <span className={`text-[7px] font-medium ${cell.count > 0 ? 'text-white' : 'text-text-muted'}`}>
-                          {cell.dayNum}
-                        </span>
-                      )}
-                    </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {dayLabels.map((label, i) => (
+                      <th key={i} className="pb-1">
+                        <span className="text-[8px] font-medium text-text-muted">{label}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {month.weeks.map((week, wi) => (
+                    <tr key={wi}>
+                      {week.map((cell, ci) => (
+                        <td key={ci} className="p-[1.5px] text-center">
+                          {cell.dayNum > 0 ? (
+                            <div
+                              className={`aspect-square rounded-[4px] flex items-center justify-center ${
+                                cell.isToday ? 'ring-1 ring-primary-400' : ''
+                              } ${cell.day && onSetDayCount ? 'cursor-pointer hover:ring-1 hover:ring-primary-300' : ''} ${
+                                editingDay?.day === cell.day ? 'ring-2 ring-primary-500' : ''
+                              }`}
+                              style={{ backgroundColor: getColor(cell.count) }}
+                              title={`${cell.day}: ${cell.count} pomodoros`}
+                              onClick={() => handleCellClick(cell)}
+                            >
+                              <span className={`text-[8px] font-medium leading-none ${cell.count > 0 ? 'text-white' : 'text-text-muted'}`}>
+                                {cell.dayNum}
+                              </span>
+                            </div>
+                          ) : null}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </div>
-              ))}
+                </tbody>
+              </table>
             </div>
           ))}
         </div>

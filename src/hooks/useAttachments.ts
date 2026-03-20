@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type { TaskFolder, Attachment } from '../types'
 
-export function useAttachments(taskId: string) {
+export function useAttachments(parentId: string, parentField: 'task_id' | 'assignment_id' = 'task_id') {
   const [folders, setFolders] = useState<TaskFolder[]>([])
   const [attachments, setAttachments] = useState<Map<string, Attachment[]>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -11,7 +11,7 @@ export function useAttachments(taskId: string) {
     const { data: folderData } = await supabase
       .from('task_folders')
       .select('*')
-      .eq('task_id', taskId)
+      .eq(parentField, parentId)
       .order('sort_order', { ascending: true })
 
     if (folderData) {
@@ -37,7 +37,7 @@ export function useAttachments(taskId: string) {
       }
     }
     setLoading(false)
-  }, [taskId])
+  }, [parentId, parentField])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -45,7 +45,7 @@ export function useAttachments(taskId: string) {
     const maxOrder = folders.reduce((max, f) => Math.max(max, f.sort_order), 0)
     const { data } = await supabase
       .from('task_folders')
-      .insert({ task_id: taskId, name, sort_order: maxOrder + 1 })
+      .insert({ [parentField]: parentId, name, sort_order: maxOrder + 1 })
       .select()
       .single()
     if (data) setFolders(prev => [...prev, data])
@@ -95,7 +95,7 @@ export function useAttachments(taskId: string) {
 
   /** Upload a file (PDF or image) to Supabase Storage */
   const uploadFile = async (folderId: string, file: File) => {
-    const path = `${taskId}/${folderId}/${Date.now()}_${file.name}`
+    const path = `${parentId}/${folderId}/${Date.now()}_${file.name}`
     const { error: uploadError } = await supabase.storage
       .from('attachments')
       .upload(path, file)

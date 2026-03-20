@@ -1,9 +1,21 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { Check, ChevronRight, Trash2, Plus, AlertTriangle, Pencil, X, Calendar } from 'lucide-react'
+import { Check, ChevronRight, Trash2, Plus, AlertTriangle, Pencil, X, Calendar, FileText } from 'lucide-react'
 import { useTasks } from '../hooks/useTasks'
+import { supabase } from '../lib/supabase'
 import { formatDueDate, getNextColor } from '../lib/utils'
 import type { Subject, Task } from '../types'
+
+/** Returns 'white' or 'black' depending on which contrasts better with the given hex color */
+function contrastText(hex: string): string {
+  const c = hex.replace('#', '')
+  const r = parseInt(c.substring(0, 2), 16)
+  const g = parseInt(c.substring(2, 4), 16)
+  const b = parseInt(c.substring(4, 6), 16)
+  // Perceived luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.55 ? '#000000' : '#ffffff'
+}
 
 interface OutletContext {
   subjects: Subject[]
@@ -72,15 +84,13 @@ function MiniTaskCard({ task, onToggleDone, onDelete }: { task: Task; onToggleDo
   )
 }
 
-/** Inline quick-add task for a specific subject */
+/** Inline quick-add task for a specific subject — always visible */
 function InlineAddTask({ subjectId, onAdd }: { subjectId: string | null; onAdd: (task: { title: string; due_date?: string | null; subject_id?: string | null }) => Promise<unknown> }) {
-  const [expanded, setExpanded] = useState(false)
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [showDate, setShowDate] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  const reset = () => { setTitle(''); setDueDate(''); setShowDate(false); setExpanded(false) }
+  const reset = () => { setTitle(''); setDueDate(''); setShowDate(false) }
 
   const handleSubmit = async () => {
     if (!title.trim()) return
@@ -88,29 +98,15 @@ function InlineAddTask({ subjectId, onAdd }: { subjectId: string | null; onAdd: 
     reset()
   }
 
-  if (!expanded) {
-    return (
-      <button
-        onClick={() => { setExpanded(true); setTimeout(() => inputRef.current?.focus(), 50) }}
-        className="flex items-center gap-1 w-full px-2 py-1.5 rounded-lg text-[10px] text-text-muted hover:text-primary-500 hover:bg-white/50 transition-colors"
-      >
-        <Plus className="w-3 h-3" />
-        New task
-      </button>
-    )
-  }
-
   return (
-    <div className="rounded-lg border border-primary-200 bg-white/80 p-2">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
         <input
-          ref={inputRef}
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') reset() }}
-          placeholder="Task name..."
-          autoFocus
-          className="flex-1 text-xs outline-none bg-transparent text-text-primary placeholder:text-text-muted min-w-0"
+          placeholder="New task..."
+          className="flex-1 text-xs outline-none bg-transparent text-text-primary placeholder:text-text-muted/50 min-w-0"
         />
         <button
           onClick={() => setShowDate(!showDate)}
@@ -119,10 +115,9 @@ function InlineAddTask({ subjectId, onAdd }: { subjectId: string | null; onAdd: 
           <Calendar className="w-3 h-3" />
         </button>
         <button onClick={handleSubmit} disabled={!title.trim()} className="px-2 py-0.5 bg-primary-600 text-white rounded text-[10px] font-medium disabled:opacity-40">Add</button>
-        <button onClick={reset} className="text-[10px] text-text-muted px-1">Cancel</button>
       </div>
       {showDate && (
-        <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-border">
+        <div className="flex items-center gap-1 pt-1 border-t border-border">
           <Calendar className="w-3 h-3 text-text-muted" />
           <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="text-[10px] px-1.5 py-0.5 rounded border border-border outline-none focus:border-primary-400" />
         </div>
@@ -171,6 +166,15 @@ export function DashboardPage() {
     setEditingSubjectId(null)
   }
 
+  const handleCreateAssignment = async (subjectId: string) => {
+    const { data } = await supabase
+      .from('assignments')
+      .insert({ title: 'New assignment', subject_id: subjectId })
+      .select()
+      .single()
+    if (data) navigate(`/assignments/${data.id}`)
+  }
+
   return (
     <div className="p-4 flex flex-col gap-3">
       <h2 className="text-lg font-semibold text-text-primary">Up next...</h2>
@@ -189,20 +193,11 @@ export function DashboardPage() {
               className="rounded-xl border overflow-hidden h-[280px] flex flex-col relative"
               style={{ borderColor: color + '30', backgroundColor: color + '08' }}
             >
-              {/* Color tab right */}
-              {group.subject && (
-                <div
-                  className="absolute right-0 top-0 bottom-0 w-1.5 rounded-l-sm"
-                  style={{ backgroundColor: color }}
-                />
-              )}
-
               {/* Header */}
               <div
-                className="group flex items-center gap-2 px-3 py-2 shrink-0 pr-4"
-                style={{ borderBottom: `1px solid ${color}20` }}
+                className="group flex items-center gap-2 px-3 py-2 shrink-0 rounded-t-xl"
+                style={{ backgroundColor: group.subject ? color : undefined, color: group.subject ? contrastText(color) : undefined }}
               >
-
                 {editingSubjectId === group.subject?.id ? (
                   <div className="flex items-center gap-1 flex-1 min-w-0">
                     <input
@@ -210,30 +205,41 @@ export function DashboardPage() {
                       onChange={e => setEditSubjectName(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleUpdateSubject(group.subject!.id)}
                       autoFocus
-                      className="flex-1 text-xs px-1 py-0 rounded border border-border outline-none focus:border-primary-400 min-w-0 bg-white"
+                      className="flex-1 text-xs px-1 py-0 rounded border border-white/30 outline-none min-w-0 bg-white/20 text-inherit placeholder:text-inherit/50"
                     />
-                    <button onClick={() => handleUpdateSubject(group.subject!.id)} className="text-accent-600"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingSubjectId(null)} className="text-text-muted"><X className="w-3 h-3" /></button>
+                    <button onClick={() => handleUpdateSubject(group.subject!.id)} style={{ color: contrastText(color) }}><Check className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingSubjectId(null)} style={{ color: contrastText(color), opacity: 0.7 }}><X className="w-3 h-3" /></button>
                   </div>
                 ) : (
                   <>
                     <span
-                      className="text-xs font-semibold text-text-secondary uppercase tracking-wide cursor-pointer hover:text-primary-600 transition-colors"
+                      className="text-xs font-semibold uppercase tracking-wide cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => group.subject && window.location.assign(`/subjects/${group.subject.id}`)}
                     >
                       {group.subject?.name ?? 'No subject'}
                     </span>
-                    <span className="text-[10px] text-text-muted">({group.tasks.length})</span>
-                    {group.subject && (
-                      <div className="hidden group-hover:flex items-center gap-0.5 ml-auto">
-                        <button onClick={() => { setEditingSubjectId(group.subject!.id); setEditSubjectName(group.subject!.name) }} className="text-text-muted hover:text-text-secondary p-0.5">
-                          <Pencil className="w-2.5 h-2.5" />
+                    <span className="text-[10px] opacity-70">({group.tasks.length})</span>
+                    <div className="flex items-center gap-0.5 ml-auto">
+                      {group.subject && (
+                        <button
+                          onClick={() => handleCreateAssignment(group.subject!.id)}
+                          className="opacity-70 hover:opacity-100 p-0.5 transition-opacity"
+                          title="New becijferde opdracht"
+                        >
+                          <FileText className="w-3 h-3" />
                         </button>
-                        <button onClick={() => deleteSubject(group.subject!.id)} className="text-text-muted hover:text-danger p-0.5">
-                          <Trash2 className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    )}
+                      )}
+                      {group.subject && (
+                        <div className="hidden group-hover:flex items-center gap-0.5">
+                          <button onClick={() => { setEditingSubjectId(group.subject!.id); setEditSubjectName(group.subject!.name) }} className="opacity-70 hover:opacity-100 p-0.5">
+                            <Pencil className="w-2.5 h-2.5" />
+                          </button>
+                          <button onClick={() => deleteSubject(group.subject!.id)} className="opacity-70 hover:opacity-100 p-0.5">
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -249,17 +255,9 @@ export function DashboardPage() {
                 )}
               </div>
 
-              {/* Inline add task */}
-              <div className="px-2 pb-2 shrink-0">
-                <div className="flex items-center gap-1">
-                  <InlineAddTask subjectId={group.subject?.id ?? null} onAdd={addTask} />
-                  <button
-                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] text-text-muted hover:text-primary-500 hover:bg-white/50 transition-colors whitespace-nowrap"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Becijferde opdracht
-                  </button>
-                </div>
+              {/* Inline add task — always visible */}
+              <div className="px-2 pb-2 pt-1.5 shrink-0 bg-black/[0.03] border-t border-black/[0.04]">
+                <InlineAddTask subjectId={group.subject?.id ?? null} onAdd={addTask} />
               </div>
             </div>
           )

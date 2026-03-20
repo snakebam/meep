@@ -55,4 +55,24 @@ export interface HeatmapDay {
   count: number
 }
 
+export interface Assignment {
+  id: string
+  title: string
+  note: string | null
+  due_date: string | null
+  subject_id: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+  subject?: Subject | null
+}
+
+export interface AssignmentTask {
+  id: string
+  assignment_id: string
+  task_id: string
+  created_at: string
+  task?: Task
+}
+
 export type TimerState = 'idle' | 'running' | 'completed'
