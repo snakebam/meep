@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAttachments } from '../hooks/useAttachments'
 import { FolderColumn } from '../components/attachments/FolderColumn'
 import { RichTextEditor } from '../components/RichTextEditor'
+import PdfViewer from '../components/PdfViewer'
 import type { Assignment, Task, Subject } from '../types'
 
 interface OutletContext {
@@ -336,20 +337,25 @@ export function AssignmentPage() {
           <div className="w-1/2 min-w-0 flex flex-col">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-text-primary truncate">{activePdf.title}</span>
-              <button
-                onClick={() => setActivePdf(null)}
-                className="p-1 rounded-lg hover:bg-surface-tertiary transition-colors text-text-muted"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <a
+                  href={activePdf.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary-400 hover:text-primary-300 transition-colors"
+                >
+                  Open in tab
+                </a>
+                <button
+                  onClick={() => setActivePdf(null)}
+                  className="p-1 rounded-lg hover:bg-surface-tertiary transition-colors text-text-muted"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 min-h-0 rounded-xl border border-border overflow-hidden bg-surface">
-              <iframe
-                src={activePdf.url}
-                title={activePdf.title}
-                className="w-full h-full border-0"
-                style={{ minHeight: '500px' }}
-              />
+            <div className="flex-1 min-h-0 rounded-xl border border-border overflow-hidden bg-surface" style={{ minHeight: '500px' }}>
+              <PdfViewer url={activePdf.url} />
             </div>
           </div>
         ) : (

@@ -98,7 +98,7 @@ export function useAttachments(parentId: string, parentField: 'task_id' | 'assig
     const path = `${parentId}/${folderId}/${Date.now()}_${file.name}`
     const { error: uploadError } = await supabase.storage
       .from('attachments')
-      .upload(path, file)
+      .upload(path, file, { contentType: file.type })
 
     if (uploadError) {
       console.error('Upload failed:', uploadError.message)

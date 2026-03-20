@@ -34,7 +34,7 @@ function getDueColor(dateStr: string): { color: string; showWarning: boolean } {
   return { color: 'text-accent-600', showWarning: false }
 }
 
-function MiniTaskCard({ task, onToggleDone, onDelete }: { task: Task; onToggleDone: (id: string) => void; onDelete: (id: string) => void }) {
+function MiniTaskCard({ task, onToggleDone, onDelete, color }: { task: Task; onToggleDone: (id: string) => void; onDelete: (id: string) => void; color?: string }) {
   const navigate = useNavigate()
   const due = task.due_date ? formatDueDate(task.due_date) : null
   const dueColor = task.due_date ? getDueColor(task.due_date) : null
@@ -44,8 +44,9 @@ function MiniTaskCard({ task, onToggleDone, onDelete }: { task: Task; onToggleDo
       className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
         task.is_done
           ? 'border-border bg-surface-tertiary/80 opacity-50'
-          : 'border-border/60 bg-surface-tertiary/80 hover:bg-surface-tertiary'
+          : 'bg-surface-tertiary hover:brightness-110'
       }`}
+      style={!task.is_done && color ? { borderColor: color + '35' } : undefined}
       onClick={() => navigate(`/tasks/${task.id}`)}
     >
       <button
@@ -53,8 +54,9 @@ function MiniTaskCard({ task, onToggleDone, onDelete }: { task: Task; onToggleDo
         className={`shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
           task.is_done
             ? 'bg-accent-500 border-accent-500 text-white'
-            : 'border-border hover:border-primary-400'
+            : ''
         }`}
+        style={!task.is_done && color ? { borderColor: color + '80' } : !task.is_done ? { borderColor: 'var(--color-border)' } : undefined}
       >
         {task.is_done && <Check className="w-2.5 h-2.5" />}
       </button>
@@ -79,13 +81,13 @@ function MiniTaskCard({ task, onToggleDone, onDelete }: { task: Task; onToggleDo
         <Trash2 className="w-3 h-3" />
       </button>
 
-      <ChevronRight className="w-3 h-3 text-text-muted shrink-0" />
+      <ChevronRight className="w-3 h-3 shrink-0" style={{ color: color || 'var(--color-text-muted)' }} />
     </div>
   )
 }
 
 /** Inline quick-add task for a specific subject — always visible */
-function InlineAddTask({ subjectId, onAdd }: { subjectId: string | null; onAdd: (task: { title: string; due_date?: string | null; subject_id?: string | null }) => Promise<unknown> }) {
+function InlineAddTask({ subjectId, onAdd, color }: { subjectId: string | null; color?: string; onAdd: (task: { title: string; due_date?: string | null; subject_id?: string | null }) => Promise<unknown> }) {
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [showDate, setShowDate] = useState(false)
@@ -106,15 +108,20 @@ function InlineAddTask({ subjectId, onAdd }: { subjectId: string | null; onAdd: 
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') reset() }}
           placeholder="New task..."
-          className="flex-1 text-xs outline-none bg-transparent text-text-primary placeholder:text-text-muted/50 min-w-0"
+          className="flex-1 text-xs outline-none bg-transparent text-text-primary placeholder:text-text-primary/50 min-w-0"
         />
         <button
           onClick={() => setShowDate(!showDate)}
-          className={`p-1 rounded transition-colors ${showDate || dueDate ? 'bg-primary-100 text-primary-600' : 'text-text-muted hover:bg-surface-tertiary'}`}
+          className={`p-1 rounded transition-colors ${showDate || dueDate ? 'bg-primary-100 text-primary-600' : 'text-text-secondary hover:bg-surface-tertiary'}`}
         >
           <Calendar className="w-3 h-3" />
         </button>
-        <button onClick={handleSubmit} disabled={!title.trim()} className="px-2 py-0.5 bg-primary-600 text-white rounded text-[10px] font-medium disabled:opacity-40">Add</button>
+        <button
+          onClick={handleSubmit}
+          disabled={!title.trim()}
+          className="px-2 py-0.5 text-white rounded text-[10px] font-medium disabled:opacity-40"
+          style={{ backgroundColor: color || 'var(--color-primary-600)' }}
+        >Add</button>
       </div>
       {showDate && (
         <div className="flex items-center gap-1 pt-1 border-t border-border">
@@ -248,11 +255,11 @@ export function DashboardPage() {
             <div
               key={group.subject?.id ?? '__none__'}
               className="rounded-xl border overflow-hidden h-[280px] flex flex-col relative"
-              style={{ borderColor: color + '30', backgroundColor: color + '08' }}
+              style={{ borderColor: color + '40', backgroundColor: color + '10' }}
             >
               {/* Header */}
               <div
-                className="group flex items-center gap-2 px-3 py-2 shrink-0 rounded-t-xl"
+                className="group flex items-center gap-2 px-3 py-2 shrink-0 rounded-t-xl relative z-10"
                 style={{ backgroundColor: group.subject ? color : undefined, color: group.subject ? contrastText(color) : undefined }}
               >
                 {editingSubjectId === group.subject?.id ? (
@@ -353,7 +360,7 @@ export function DashboardPage() {
                           {/* Tasks */}
                           <div className="flex-1 flex flex-col gap-1 py-0.5 min-w-0">
                             {linkedTasks.map(task => (
-                              <MiniTaskCard key={task.id} task={task} onToggleDone={toggleDone} onDelete={deleteTask} />
+                              <MiniTaskCard key={task.id} task={task} color={color} onToggleDone={toggleDone} onDelete={deleteTask} />
                             ))}
                           </div>
                         </div>
@@ -364,7 +371,7 @@ export function DashboardPage() {
 
                 {/* Unlinked tasks (not part of any assignment) */}
                 {group.tasks.filter(t => !allLinkedTaskIds.has(t.id)).map(task => (
-                  <MiniTaskCard key={task.id} task={task} onToggleDone={toggleDone} onDelete={deleteTask} />
+                  <MiniTaskCard key={task.id} task={task} color={color} onToggleDone={toggleDone} onDelete={deleteTask} />
                 ))}
 
                 {group.tasks.length === 0 && group.assignments.length === 0 && (
@@ -373,8 +380,8 @@ export function DashboardPage() {
               </div>
 
               {/* Inline add task — always visible */}
-              <div className="px-2 pb-2 pt-1.5 shrink-0 bg-white/[0.08] border-t border-white/[0.08]">
-                <InlineAddTask subjectId={group.subject?.id ?? null} onAdd={addTask} />
+              <div className="px-2 pb-2 pt-1.5 shrink-0 border-t" style={{ backgroundColor: color + '40', borderColor: color + '50' }}>
+                <InlineAddTask subjectId={group.subject?.id ?? null} color={color} onAdd={addTask} />
               </div>
             </div>
           )
@@ -412,7 +419,7 @@ export function DashboardPage() {
           </p>
           <div className="flex flex-col gap-1">
             {tasks.filter(t => t.is_done).map(task => (
-              <MiniTaskCard key={task.id} task={task} onToggleDone={toggleDone} onDelete={deleteTask} />
+              <MiniTaskCard key={task.id} task={task} color={color} onToggleDone={toggleDone} onDelete={deleteTask} />
             ))}
           </div>
         </div>

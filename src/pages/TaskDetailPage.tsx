@@ -6,6 +6,7 @@ import { formatDueDate } from '../lib/utils'
 import { useAttachments } from '../hooks/useAttachments'
 import { FolderColumn } from '../components/attachments/FolderColumn'
 import { RichTextEditor } from '../components/RichTextEditor'
+import PdfViewer from '../components/PdfViewer'
 import type { Task, Subject } from '../types'
 
 interface OutletContext {
@@ -184,13 +185,8 @@ export function TaskDetailPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 min-h-0 rounded-xl border border-border overflow-hidden bg-surface">
-              <iframe
-                src={activePdf.url}
-                title={activePdf.title}
-                className="w-full h-full border-0"
-                style={{ minHeight: '500px' }}
-              />
+            <div className="flex-1 min-h-0 rounded-xl border border-border overflow-hidden bg-surface" style={{ minHeight: '500px' }}>
+              <PdfViewer url={activePdf.url} />
             </div>
           </div>
         ) : (
