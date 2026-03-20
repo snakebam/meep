@@ -62,7 +62,7 @@ function Countdown({ dueDate }: { dueDate: string }) {
 export function AssignmentPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { subjects } = useOutletContext<OutletContext>()
+  useOutletContext<OutletContext>()
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [note, setNote] = useState('')
   const [title, setTitle] = useState('')

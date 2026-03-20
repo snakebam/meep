@@ -419,7 +419,7 @@ export function DashboardPage() {
           </p>
           <div className="flex flex-col gap-1">
             {tasks.filter(t => t.is_done).map(task => (
-              <MiniTaskCard key={task.id} task={task} color={color} onToggleDone={toggleDone} onDelete={deleteTask} />
+              <MiniTaskCard key={task.id} task={task} color={subjects.find(s => s.id === task.subject_id)?.color} onToggleDone={toggleDone} onDelete={deleteTask} />
             ))}
           </div>
         </div>
