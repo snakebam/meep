@@ -2,6 +2,26 @@
 echo Starting VWO Learning Platform...
 echo.
 
+:: First-time setup: if not a git repo, clone it properly
+if not exist ".git" (
+    echo First-time setup — downloading app...
+    cd ..
+    ren meep meep-old
+    git clone https://github.com/snakebam/meep.git meep
+    :: Copy uploads folder from old install if it existed
+    if exist "meep-old\uploads" (
+        xcopy /E /I /Y "meep-old\uploads" "meep\uploads"
+    )
+    rmdir /S /Q meep-old
+    cd meep
+    echo.
+)
+
+:: Auto-update from GitHub
+echo Checking for updates...
+git pull
+echo.
+
 :: Create .env if missing
 if not exist ".env" (
     echo Creating config file...
@@ -13,7 +33,7 @@ if not exist ".env" (
     echo.
 )
 
-:: Check if node_modules exists
+:: Install/update dependencies
 if not exist "node_modules" (
     echo Installing dependencies...
     npm install
