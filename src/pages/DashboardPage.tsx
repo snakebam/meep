@@ -507,7 +507,7 @@ export function DashboardPage() {
               className={`rounded-xl border overflow-hidden h-[280px] flex flex-col relative transition-colors ${
                 isDropTarget ? 'ring-2 ring-primary-400' : ''
               }`}
-              style={{ borderColor: color + '40', backgroundColor: color + '10' }}
+              style={{ borderColor: color + '40', backgroundColor: 'rgba(26, 28, 48, 0.70)' }}
               onDragOver={e => handleSubjectDragOver(e, group.subject?.id ?? null)}
               onDragLeave={handleSubjectDragLeave}
               onDrop={e => handleSubjectDrop(e, group.subject?.id ?? null)}
