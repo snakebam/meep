@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { Check, ChevronRight, ChevronDown, Trash2, Plus, AlertTriangle, Pencil, X, Calendar, FileText } from 'lucide-react'
+import { Check, ChevronRight, ChevronDown, Trash2, Plus, AlertTriangle, Pencil, X, Calendar, FileText, Clock, Sun } from 'lucide-react'
 import { useTasks } from '../hooks/useTasks'
 import { supabase } from '../lib/supabase'
 import { formatDueDate, getNextColor } from '../lib/utils'
@@ -137,6 +137,48 @@ interface AssignmentWithTasks extends Assignment {
   linkedTaskIds: Set<string>
 }
 
+/** A draggable assignment row used in the "Up Next" organizer and "Vandaag" columns */
+function DraggableAssignmentRow({
+  assignment,
+  subjectColor,
+  subjectName,
+  onDragStart,
+}: {
+  assignment: AssignmentWithTasks
+  subjectColor: string
+  subjectName: string
+  onDragStart: (e: React.DragEvent, assignment: AssignmentWithTasks) => void
+}) {
+  const navigate = useNavigate()
+  const dueInfo = assignment.due_date ? getDueColor(assignment.due_date) : null
+
+  return (
+    <div
+      draggable
+      onDragStart={e => onDragStart(e, assignment)}
+      className="flex items-center gap-2 px-2.5 py-2 rounded-lg border bg-surface-tertiary cursor-grab active:cursor-grabbing hover:brightness-110 transition-all"
+      style={{ borderColor: subjectColor + '35' }}
+    >
+      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: subjectColor }} />
+      <div className="flex-1 min-w-0">
+        <span
+          className="text-[11px] font-semibold text-text-primary truncate block hover:underline cursor-pointer"
+          onClick={() => navigate(`/assignments/${assignment.id}`)}
+        >
+          {assignment.title}
+        </span>
+        <span className="text-[9px] text-text-muted">{subjectName}</span>
+      </div>
+      {dueInfo && assignment.due_date && (
+        <span className={`text-[9px] font-medium shrink-0 ${dueInfo.color}`}>
+          {dueInfo.showWarning && <AlertTriangle className="w-2 h-2 inline mr-0.5" />}
+          {formatDueDate(assignment.due_date).label}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function DashboardPage() {
   const { subjects, addSubject, updateSubject, deleteSubject } = useOutletContext<OutletContext>()
   const { tasks, addTask, toggleDone, deleteTask } = useTasks()
@@ -147,6 +189,22 @@ export function DashboardPage() {
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null)
   const [editSubjectName, setEditSubjectName] = useState('')
   const [collapsedAssignments, setCollapsedAssignments] = useState<Set<string>>(new Set())
+  const [dragOverSubjectId, setDragOverSubjectId] = useState<string | null>(null)
+
+  // "Vandaag" (today) list — persisted in localStorage
+  const [todayIds, setTodayIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('meep-today-ids')
+      if (stored) return new Set(JSON.parse(stored))
+    } catch { /* ignore */ }
+    return new Set()
+  })
+  const [dragOverToday, setDragOverToday] = useState(false)
+  const [dragOverUpNext, setDragOverUpNext] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem('meep-today-ids', JSON.stringify([...todayIds]))
+  }, [todayIds])
 
   const toggleCollapse = (assignmentId: string) => {
     setCollapsedAssignments(prev => {
@@ -211,6 +269,38 @@ export function DashboardPage() {
     subjectGroups.push({ subject: null, tasks: unassigned, assignments: [] })
   }
 
+  // --- "Up Next" assignments sorted by due date ---
+  const upNextAssignments = [...assignments]
+    .sort((a, b) => {
+      if (!a.due_date && !b.due_date) return 0
+      if (!a.due_date) return 1
+      if (!b.due_date) return -1
+      return a.due_date.localeCompare(b.due_date)
+    })
+    .filter(a => !todayIds.has(a.id))
+
+  const todayAssignments = assignments.filter(a => todayIds.has(a.id))
+    .sort((a, b) => {
+      if (!a.due_date && !b.due_date) return 0
+      if (!a.due_date) return 1
+      if (!b.due_date) return -1
+      return a.due_date.localeCompare(b.due_date)
+    })
+
+  // Clean up todayIds that no longer exist
+  useEffect(() => {
+    const assignmentIds = new Set(assignments.map(a => a.id))
+    setTodayIds(prev => {
+      const next = new Set([...prev].filter(id => assignmentIds.has(id)))
+      if (next.size !== prev.size) return next
+      return prev
+    })
+  }, [assignments])
+
+  const getSubjectForAssignment = (assignment: AssignmentWithTasks) => {
+    return subjects.find(s => s.id === assignment.subject_id)
+  }
+
   const handleAddSubject = async () => {
     if (!newSubjectName.trim()) return
     await addSubject(newSubjectName.trim(), getNextColor(subjects.map(s => s.color)))
@@ -239,9 +329,168 @@ export function DashboardPage() {
     }
   }
 
+  // --- Drag & drop: move assignments between subjects ---
+  const handleAssignmentDragStart = (e: React.DragEvent, assignment: AssignmentWithTasks) => {
+    e.dataTransfer.setData('application/assignment-id', assignment.id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleSubjectDragOver = (e: React.DragEvent, subjectId: string | null) => {
+    if (e.dataTransfer.types.includes('application/assignment-id')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      setDragOverSubjectId(subjectId)
+    }
+  }
+
+  const handleSubjectDragLeave = () => {
+    setDragOverSubjectId(null)
+  }
+
+  const handleSubjectDrop = async (e: React.DragEvent, targetSubjectId: string | null) => {
+    e.preventDefault()
+    setDragOverSubjectId(null)
+    const assignmentId = e.dataTransfer.getData('application/assignment-id')
+    if (!assignmentId || !targetSubjectId) return
+
+    const assignment = assignments.find(a => a.id === assignmentId)
+    if (!assignment || assignment.subject_id === targetSubjectId) return
+
+    // Update in database
+    const { error } = await supabase
+      .from('assignments')
+      .update({ subject_id: targetSubjectId })
+      .eq('id', assignmentId)
+
+    if (error) {
+      console.error('Failed to move assignment:', error)
+      return
+    }
+
+    // Update local state
+    setAssignments(prev => prev.map(a =>
+      a.id === assignmentId ? { ...a, subject_id: targetSubjectId } : a
+    ))
+  }
+
+  // --- Drag & drop: "Up Next" <-> "Vandaag" ---
+  const handleOrganizerDragStart = (e: React.DragEvent, assignment: AssignmentWithTasks) => {
+    e.dataTransfer.setData('application/organizer-id', assignment.id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleTodayDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/organizer-id')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      setDragOverToday(true)
+    }
+  }
+
+  const handleTodayDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverToday(false)
+    const id = e.dataTransfer.getData('application/organizer-id')
+    if (id) {
+      setTodayIds(prev => new Set([...prev, id]))
+    }
+  }
+
+  const handleUpNextDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/organizer-id')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      setDragOverUpNext(true)
+    }
+  }
+
+  const handleUpNextDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverUpNext(false)
+    const id = e.dataTransfer.getData('application/organizer-id')
+    if (id) {
+      setTodayIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
+  }
+
   return (
     <div className="p-4 flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-text-primary">Up next...</h2>
+      {/* Organizer row: "Up Next" + "Vandaag" */}
+      <div className="flex gap-4">
+        {/* Up Next — wider column */}
+        <div
+          className={`flex-[2] rounded-xl border overflow-hidden flex flex-col transition-colors ${
+            dragOverUpNext ? 'border-primary-400 bg-primary-400/10' : 'border-border bg-surface-tertiary/30'
+          }`}
+          style={{ minHeight: 200, maxHeight: 320 }}
+          onDragOver={handleUpNextDragOver}
+          onDragLeave={() => setDragOverUpNext(false)}
+          onDrop={handleUpNextDrop}
+        >
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface-tertiary/60 shrink-0">
+            <Clock className="w-3.5 h-3.5 text-primary-400" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-text-primary">Up next</span>
+            <span className="text-[10px] text-text-muted">({upNextAssignments.length})</span>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
+            {upNextAssignments.length === 0 && (
+              <p className="text-[10px] text-text-muted/50 text-center py-4">Geen opdrachten</p>
+            )}
+            {upNextAssignments.map(assignment => {
+              const subject = getSubjectForAssignment(assignment)
+              return (
+                <DraggableAssignmentRow
+                  key={assignment.id}
+                  assignment={assignment}
+                  subjectColor={subject?.color ?? '#94a3b8'}
+                  subjectName={subject?.name ?? 'No subject'}
+                  onDragStart={handleOrganizerDragStart}
+                />
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Vandaag — smaller column */}
+        <div
+          className={`flex-1 rounded-xl border overflow-hidden flex flex-col transition-colors ${
+            dragOverToday ? 'border-primary-400 bg-primary-400/10' : 'border-border bg-surface-tertiary/30'
+          }`}
+          style={{ minHeight: 200, maxHeight: 320 }}
+          onDragOver={handleTodayDragOver}
+          onDragLeave={() => setDragOverToday(false)}
+          onDrop={handleTodayDrop}
+        >
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface-tertiary/60 shrink-0">
+            <Sun className="w-3.5 h-3.5 text-warning" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-text-primary">Vandaag</span>
+            <span className="text-[10px] text-text-muted">({todayAssignments.length})</span>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
+            {todayAssignments.length === 0 && (
+              <p className="text-[10px] text-text-muted/50 text-center py-4">
+                Sleep opdrachten hierheen
+              </p>
+            )}
+            {todayAssignments.map(assignment => {
+              const subject = getSubjectForAssignment(assignment)
+              return (
+                <DraggableAssignmentRow
+                  key={assignment.id}
+                  assignment={assignment}
+                  subjectColor={subject?.color ?? '#94a3b8'}
+                  subjectName={subject?.name ?? 'No subject'}
+                  onDragStart={handleOrganizerDragStart}
+                />
+              )
+            })}
+          </div>
+        </div>
+      </div>
 
       {subjectGroups.length === 0 && (
         <p className="text-sm text-text-muted text-center py-8">No subjects yet. Add one below!</p>
@@ -251,11 +500,17 @@ export function DashboardPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {subjectGroups.map(group => {
           const color = group.subject?.color ?? '#94a3b8'
+          const isDropTarget = dragOverSubjectId === (group.subject?.id ?? null)
           return (
             <div
               key={group.subject?.id ?? '__none__'}
-              className="rounded-xl border overflow-hidden h-[280px] flex flex-col relative"
+              className={`rounded-xl border overflow-hidden h-[280px] flex flex-col relative transition-colors ${
+                isDropTarget ? 'ring-2 ring-primary-400' : ''
+              }`}
               style={{ borderColor: color + '40', backgroundColor: color + '10' }}
+              onDragOver={e => handleSubjectDragOver(e, group.subject?.id ?? null)}
+              onDragLeave={handleSubjectDragLeave}
+              onDrop={e => handleSubjectDrop(e, group.subject?.id ?? null)}
             >
               {/* Header */}
               <div
@@ -317,8 +572,12 @@ export function DashboardPage() {
                   const isCollapsed = collapsedAssignments.has(assignment.id)
                   return (
                     <div key={assignment.id} className="flex flex-col">
-                      {/* Assignment heading row */}
-                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-white/[0.04] transition-colors group/assignment">
+                      {/* Assignment heading row — draggable */}
+                      <div
+                        draggable
+                        onDragStart={e => handleAssignmentDragStart(e, assignment)}
+                        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing hover:bg-white/[0.04] transition-colors group/assignment"
+                      >
                         {linkedTasks.length > 0 && (
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleCollapse(assignment.id) }}

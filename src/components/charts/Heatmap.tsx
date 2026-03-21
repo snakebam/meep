@@ -34,8 +34,10 @@ export function Heatmap({ data, onSetDayCount }: HeatmapProps) {
     const firstDate = new Date(data[0].day + 'T00:00:00')
     const lastDate = new Date(data[data.length - 1].day + 'T00:00:00')
 
-    let current = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1)
-    const end = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 0)
+    // Only show the current month
+    const now = new Date()
+    let current = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
     while (current <= end) {
       const year = current.getFullYear()
